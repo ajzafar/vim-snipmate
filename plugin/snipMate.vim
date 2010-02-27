@@ -166,8 +166,12 @@ fun! TriggerSnippet()
 	if exists('g:snipPos') | return snipMate#jumpTabStop(0) | endif
 
 	let word = matchstr(getline('.'), '\S\+\%'.col('.').'c')
+	let multisnip = 0
 	for scope in [bufnr('%')] + split(&ft, '\.') + ['_']
 		let [trigger, snippet] = s:GetSnippet(word, scope)
+		if snippet == '' && trigger == ''
+			let multisnip = 1
+		endif
 		" If word is a trigger for a snippet, delete the trigger & expand
 		" the snippet.
 		if snippet != ''
@@ -176,6 +180,12 @@ fun! TriggerSnippet()
 			return snipMate#expandSnip(snippet, col)
 		endif
 	endfor
+
+	" launch CompleteSnippets() for multi snips
+	if multisnip == 1
+		call CompleteSnippets()
+		return ''
+	endif
 
 	if exists('SuperTabKey')
 		call feedkeys(SuperTabKey)
@@ -203,12 +213,30 @@ fun! CompleteSnippets()
 	" get possible snippets
 	let snippets = []
 	for scope in [bufnr('%')] + split(&ft, '\.') + ['_']
-		let snippets += has_key(s:snippets, scope) ? keys(s:snippets[scope]) : []
+		" get normal snippets
+		if has_key(s:snippets, scope)
+			for key in keys(s:snippets[scope])
+				let item = {}
+				let item['word'] = key
+				call insert(snippets, item)
+			endfor
+		endif
+		" get multi snips
 		if has_key(s:multi_snips, scope)
-			let snippets += keys(s:multi_snips[scope])
+			for key in keys(s:multi_snips[scope])
+				let i = 0
+				for description in s:multi_snips[scope][key]
+					let item = {}
+					let item['word'] = key . '_' . i
+					let item['menu'] = description[0]
+					let item['dup'] = '1'
+					call insert(snippets, item)
+					let i += 1
+				endfor
+			endfor
 		endif
 	endfor
-	call filter(snippets, 'v:val =~ "^'.word.'"')
+	call filter(snippets, 'v:val.word =~ "^'.word.'"')
 	call sort(snippets)
 	call complete(start+1, snippets)
 	if len(snippets) == 1
@@ -242,8 +270,16 @@ fun s:GetSnippet(word, scope)
 		if exists('s:snippets["'.a:scope.'"]["'.escape(word, '\"').'"]')
 			let snippet = s:snippets[a:scope][word]
 		elseif exists('s:multi_snips["'.a:scope.'"]["'.escape(word, '\"').'"]')
-			let snippet = s:ChooseSnippet(a:scope, word)
-			if snippet == '' | break | endif
+			return ['', '']
+		elseif match(word, '_\d\+$') != -1
+			let id = matchstr(word, '_\zs\d\+$') - 1
+			let snip = matchstr(word, '^.*\ze_\d\+$')
+			if exists('s:multi_snips["'.a:scope.'"]["'.escape(snip, '\"').'"]')
+				let snippet = s:multi_snips[a:scope][snip][id][1]
+				if snippet == '' | break | endif
+			else
+				break
+			endif
 		else
 			if match(word, '\W') == -1 | break | endif
 			let word = substitute(word, '.\{-}\W', '', '')
