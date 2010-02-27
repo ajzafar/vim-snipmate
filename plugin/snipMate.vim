@@ -291,18 +291,6 @@ fun s:GetSnippet(word, scope)
 	return [word, snippet]
 endf
 
-fun s:ChooseSnippet(scope, trigger)
-	let snippet = []
-	let i = 1
-	for snip in s:multi_snips[a:scope][a:trigger]
-		let snippet += [i.'. '.snip[0]]
-		let i += 1
-	endfor
-	if i == 2 | return s:multi_snips[a:scope][a:trigger][0][1] | endif
-	let num = inputlist(snippet) - 1
-	return num == -1 ? '' : s:multi_snips[a:scope][a:trigger][num][1]
-endf
-
 fun! ShowAvailableSnips()
 	let line  = getline('.')
 	let col   = col('.')
