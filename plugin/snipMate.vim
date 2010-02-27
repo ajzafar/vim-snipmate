@@ -184,7 +184,7 @@ fun! TriggerSnippet()
 	return "\<tab>"
 endf
 
-fun! CompleteSnippets(ft)
+fun! CompleteSnippets()
 	let line = getline('.')
 	let cur = col('.') - 1
 	let start = cur
@@ -201,15 +201,18 @@ fun! CompleteSnippets(ft)
 	let word = strpart(line, start, (cur-start))
 
 	" get possible snippets
-	if has_key(s:snippets, a:ft)
-		let snippets = keys(s:snippets[a:ft])
-		let snippets += keys(s:snippets['_'])
-		call filter(snippets, 'v:val =~ "^'.word.'"')
-		call sort(snippets)
-		call complete(start+1, snippets)
-		if len(snippets) == 1
-			return "\<c-r>=TriggerSnippet()\<cr>"
+	let snippets = []
+	for scope in [bufnr('%')] + split(&ft, '\.') + ['_']
+		let snippets += has_key(s:snippets, scope) ? keys(s:snippets[scope]) : []
+		if has_key(s:multi_snips, scope)
+			let snippets += keys(s:multi_snips[scope])
 		endif
+	endfor
+	call filter(snippets, 'v:val =~ "^'.word.'"')
+	call sort(snippets)
+	call complete(start+1, snippets)
+	if len(snippets) == 1
+		return "\<c-r>=TriggerSnippet()\<cr>"
 	endif
 	return ''
 endf
