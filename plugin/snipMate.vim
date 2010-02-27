@@ -169,7 +169,7 @@ fun! TriggerSnippet()
 	let multisnip = 0
 	for scope in [bufnr('%')] + split(&ft, '\.') + ['_']
 		let [trigger, snippet] = s:GetSnippet(word, scope)
-		if snippet == '' && trigger == ''
+		if snippet == '' && trigger == '' && word != ''
 			let multisnip = 1
 		endif
 		" If word is a trigger for a snippet, delete the trigger & expand
