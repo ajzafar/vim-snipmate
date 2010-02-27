@@ -184,6 +184,36 @@ fun! TriggerSnippet()
 	return "\<tab>"
 endf
 
+fun! CompleteSnippets(ft)
+	let line = getline('.')
+	let cur = col('.') - 1
+	let start = cur
+
+	" find completion starting position
+	while start > 0
+		if line[start - 1] =~ '\S'
+			let start -= 1
+		else
+			break
+		endif
+	endwhile
+
+	let word = strpart(line, start, (cur-start))
+
+	" get possible snippets
+	if has_key(s:snippets, a:ft)
+		let snippets = keys(s:snippets[a:ft])
+		let snippets += keys(s:snippets['_'])
+		call filter(snippets, 'v:val =~ "^'.word.'"')
+		call sort(snippets)
+		call complete(start+1, snippets)
+		if len(snippets) == 1
+			return "\<c-r>=TriggerSnippet()\<cr>"
+		endif
+	endif
+	return ''
+endf
+
 fun! BackwardsSnippet()
 	if exists('g:snipPos') | return snipMate#jumpTabStop(1) | endif
 
