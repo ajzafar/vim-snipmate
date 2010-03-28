@@ -168,13 +168,14 @@ fun! TriggerSnippet()
 	let word = matchstr(getline('.'), '\S\+\%'.col('.').'c')
 	let multisnip = 0
 	for scope in [bufnr('%')] + split(&ft, '\.') + ['_']
-		let [trigger, snippet] = s:GetSnippet(word, scope)
-		if snippet == -1 && trigger == -1 && word != ''
+		try
+			let [trigger, snippet] = s:GetSnippet(word, scope)
+		catch /^snipMate: multisnip/
 			let multisnip = 1
-		endif
+		endtry
 		" If word is a trigger for a snippet, delete the trigger & expand
 		" the snippet.
-		if snippet != '' && snippet != -1
+		if snippet != '' && !multisnip
 			let col = col('.') - len(trigger)
 			sil exe 's/\V'.escape(trigger, '/\.').'\%#//'
 			return snipMate#expandSnip(snippet, col)
@@ -224,7 +225,7 @@ fun! CompleteSnippets()
 		" get multi snips
 		if has_key(s:multi_snips, scope)
 			for key in keys(s:multi_snips[scope])
-				let i = 0
+				let i = 1
 				for description in s:multi_snips[scope][key]
 					let item = {}
 					let item['word'] = key . '_' . i
@@ -270,7 +271,7 @@ fun s:GetSnippet(word, scope)
 		if exists('s:snippets["'.a:scope.'"]["'.escape(word, '\"').'"]')
 			let snippet = s:snippets[a:scope][word]
 		elseif exists('s:multi_snips["'.a:scope.'"]["'.escape(word, '\"').'"]')
-			return [-1, -1]
+			throw 'snipMate: multisnip'
 		elseif match(word, '_\d\+$') != -1
 			let id = matchstr(word, '_\zs\d\+$') - 1
 			let snip = matchstr(word, '^.*\ze_\d\+$')
