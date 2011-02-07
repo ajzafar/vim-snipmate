@@ -305,10 +305,14 @@ fun! ShowAvailableSnips()
 		endfor
 	endfor
 
-	" This is to avoid a bug with Vim when using complete(col - matchlen, matches)
-	" (Issue#46 on the Google Code snipMate issue tracker).
-	call setline(line('.'), substitute(line, repeat('.', matchlen).'\%'.col.'c', '', ''))
-	call complete(col, matches)
+	" This is required in order to make possible to do normal <C-n> completion 
+	" when no snips are available
+	if !empty(matches)
+		" This is to avoid a bug with Vim when using complete(col - matchlen, matches)
+		" (Issue#46 on the Google Code snipMate issue tracker).
+		call setline(line('.'), substitute(line, repeat('.', matchlen).'\%'.col.'c', '', ''))
+		call complete(col, matches)
+	endif
 	return ''
 endf
 " http://www.vim.org/scripts/script.php?script_id=1879
