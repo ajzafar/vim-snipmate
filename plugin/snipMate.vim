@@ -269,7 +269,7 @@ fun s:GetSnippet(word, scope)
 				break
 			endif
 		else
-			if match(word, '\W') == -1 | break | endif
+			if match(word, '\W\w') == -1 | break | endif
 			let word = substitute(word, '.\{-}\W', '', '')
 		endif
 	endw
