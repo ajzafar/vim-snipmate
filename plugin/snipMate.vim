@@ -166,22 +166,84 @@ fun! TriggerSnippet()
 	if exists('g:snipPos') | return snipMate#jumpTabStop(0) | endif
 
 	let word = matchstr(getline('.'), '\S\+\%'.col('.').'c')
+	let multisnip = 0
 	for scope in [bufnr('%')] + split(&ft, '\.') + ['_']
-		let [trigger, snippet] = s:GetSnippet(word, scope)
+		try
+			let [trigger, snippet] = s:GetSnippet(word, scope)
+		catch /^snipMate: multisnip/
+			let multisnip = 1
+		endtry
 		" If word is a trigger for a snippet, delete the trigger & expand
 		" the snippet.
-		if snippet != ''
+		if snippet != '' && !multisnip
 			let col = col('.') - len(trigger)
 			sil exe 's/\V'.escape(trigger, '/\.').'\%#//'
 			return snipMate#expandSnip(snippet, col)
 		endif
 	endfor
 
+	" launch CompleteSnippets() for multi snips
+	if multisnip == 1
+		call CompleteSnippets()
+		return ''
+	endif
+
 	if exists('SuperTabKey')
 		call feedkeys(SuperTabKey)
 		return ''
 	endif
 	return "\<tab>"
+endf
+
+fun! CompleteSnippets()
+	let line = getline('.')
+	let cur = col('.') - 1
+	let start = cur
+
+	" find completion starting position
+	while start > 0
+		if line[start - 1] =~ '\S'
+			let start -= 1
+		else
+			break
+		endif
+	endwhile
+
+	let word = strpart(line, start, (cur-start))
+
+	" get possible snippets
+	let snippets = []
+	for scope in [bufnr('%')] + split(&ft, '\.') + ['_']
+		" get normal snippets
+		if has_key(s:snippets, scope)
+			for key in keys(s:snippets[scope])
+				let item = {}
+				let item['word'] = key
+				call insert(snippets, item)
+			endfor
+		endif
+		" get multi snips
+		if has_key(s:multi_snips, scope)
+			for key in keys(s:multi_snips[scope])
+				let i = 1
+				for description in s:multi_snips[scope][key]
+					let item = {}
+					let item['word'] = key . '_' . i
+					let item['menu'] = description[0]
+					let item['dup'] = '1'
+					call insert(snippets, item)
+					let i += 1
+				endfor
+			endfor
+		endif
+	endfor
+	call filter(snippets, 'v:val.word =~ "^'.word.'"')
+	call sort(snippets)
+	call complete(start+1, snippets)
+	if len(snippets) == 1
+		return "\<c-r>=TriggerSnippet()\<cr>"
+	endif
+	return ''
 endf
 
 fun! BackwardsSnippet()
@@ -209,8 +271,16 @@ fun s:GetSnippet(word, scope)
 		if exists('s:snippets["'.a:scope.'"]["'.escape(word, '\"').'"]')
 			let snippet = s:snippets[a:scope][word]
 		elseif exists('s:multi_snips["'.a:scope.'"]["'.escape(word, '\"').'"]')
-			let snippet = s:ChooseSnippet(a:scope, word)
-			if snippet == '' | break | endif
+			throw 'snipMate: multisnip'
+		elseif match(word, '_\d\+$') != -1
+			let id = matchstr(word, '_\zs\d\+$') - 1
+			let snip = matchstr(word, '^.*\ze_\d\+$')
+			if exists('s:multi_snips["'.a:scope.'"]["'.escape(snip, '\"').'"]')
+				let snippet = s:multi_snips[a:scope][snip][id][1]
+				if snippet == '' | break | endif
+			else
+				break
+			endif
 		else
 			if match(word, '\W') == -1 | break | endif
 			let word = substitute(word, '.\{-}\W', '', '')
@@ -220,18 +290,6 @@ fun s:GetSnippet(word, scope)
 		let [word, snippet] = s:GetSnippet('.', a:scope)
 	endif
 	return [word, snippet]
-endf
-
-fun s:ChooseSnippet(scope, trigger)
-	let snippet = []
-	let i = 1
-	for snip in s:multi_snips[a:scope][a:trigger]
-		let snippet += [i.'. '.snip[0]]
-		let i += 1
-	endfor
-	if i == 2 | return s:multi_snips[a:scope][a:trigger][0][1] | endif
-	let num = inputlist(snippet) - 1
-	return num == -1 ? '' : s:multi_snips[a:scope][a:trigger][num][1]
 endf
 
 fun! ShowAvailableSnips()

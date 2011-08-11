@@ -1,0 +1,24 @@
+snippet prop
+	private ${2:int} _${1:name};
+	public $2 $1
+	{
+		get { return _$1; }
+		set { _$1 = value; }
+	}${3}
+snippet aclass
+	public abstract class ${1:Name}
+	{
+		public abstract void ${2}();
+	}
+snippet cclass
+	public class ${1:Name} : ${2:Base}
+	{
+		public override void ${3}
+	}
+snippet list
+	List<${2:T}> ${1:name} = new List<$2>(${3});
+snippet fore
+	foreach (${2:T} ${1:name} in ${3:iterator})
+	{
+		${4:// code}
+	}
