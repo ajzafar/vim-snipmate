@@ -16,19 +16,6 @@ ino <silent> <s-tab> <c-r>=BackwardsSnippet()<cr>
 snor <silent> <s-tab> <esc>i<right><c-r>=BackwardsSnippet()<cr>
 ino <silent> <c-r><tab> <c-r>=ShowAvailableSnips()<cr>
 
-" The default mappings for these are annoying & sometimes break snipMate.
-" You can change them back if you want, I've put them here for convenience.
-snor <bs> b<bs>
-snor <right> <esc>a
-snor <left> <esc>bi
-snor ' b<bs>'
-snor ` b<bs>`
-snor % b<bs>%
-snor U b<bs>U
-snor ^ b<bs>^
-snor \ b<bs>\
-snor <c-x> b<bs><c-x>
-
 " By default load snippets in snippets_dir
 if empty(snippets_dir)
 	finish
