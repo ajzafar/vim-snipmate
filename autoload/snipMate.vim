@@ -105,6 +105,18 @@ fun s:ProcessSnippet(snip)
 		let i += 1
 	endw
 
+	" Add ${0} tab stop if found
+	if stridx(snippet, '${0') != -1
+		let snippet = substitute(snippet, '${0', '${'.i, '')
+		let s = matchstr(snippet, '${'.i.':\zs.\{-}\ze}')
+		if s != ''
+			let snippet = substitute(snippet, '$0', '$'.i, 'g')
+			let snippet = substitute(snippet, '$'.i, s.'&', 'g')
+		endif
+	else
+		let snippet .= '${'.i.'}'
+	endif
+
 	if &et " Expand tabs to spaces if 'expandtab' is set.
 		return substitute(snippet, '\t', repeat(' ', &sts ? &sts : &sw), 'g')
 	endif
