@@ -97,7 +97,7 @@ endf
 fun! ReloadSnippets(ft)
 	let ft = a:ft == '' ? '_' : a:ft
 	call ResetSnippets(ft)
-	call GetSnippets(g:snippets_dir, ft)
+	call CreateSnippets(g:snippets_dir, ft)
 endf
 
 " Reload snippets for all filetypes.
@@ -108,7 +108,7 @@ fun! ReloadAllSnippets()
 endf
 
 let g:did_ft = {}
-fun! GetSnippets(dir, filetypes)
+fun! CreateSnippets(dir, filetypes)
 	for ft in split(a:filetypes, '\.')
 		if has_key(g:did_ft, ft) | continue | endif
 		call s:DefineSnips(a:dir, ft, ft)
