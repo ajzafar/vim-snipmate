@@ -120,7 +120,7 @@ endf
 
 " Define "aliasft" snippets for the filetype "realft".
 fun s:DefineSnips(dir, aliasft, realft)
-	for path in split(globpath(a:dir, a:aliasft.'.snippets')."\n".globpath(a:dir, a:aliasft.'-*.snippets'), "\n")
+	for path in [expand(a:dir).'/'.a:aliasft.'.snippets'] + split(globpath(a:dir, a:aliasft.'/*.snippets'), "\n")
 		call ExtractSnipsFile(path, a:realft)
 	endfor
 endf

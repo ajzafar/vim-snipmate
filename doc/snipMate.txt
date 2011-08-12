@@ -39,8 +39,9 @@ snippet will be updated. To go in reverse, use <shift-tab>.
 ==============================================================================
 SYNTAX                                                        *snippet-syntax*
 
-Snippets are defined in a 'snippets/<filetype>.snippets' file.
-Note that dotted 'filetype' syntax is supported -- e.g., you can use >
+Snippets are defined in a 'snippets/<filetype>.snippets' or
+'snippets/<filetype>/*.snippets' file. Note that dotted 'filetype' syntax is
+supported -- e.g., you can use >
 
 	:set ft=html.eruby
 
