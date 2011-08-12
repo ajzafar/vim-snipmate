@@ -18,22 +18,19 @@ if !exists('snips_author') | let snips_author = 'Me' | endif
 au BufRead,BufNewFile *.snippets\= set ft=snippet
 au FileType snippet setl noet fdm=expr fde=getline(v:lnum)!~'^\\t\\\\|^$'?'>1':1
 
-let s:snippets = {} | let s:multi_snips = {}
+" bind local dict to global dict (debugging purposes)
+" you should use MakeSnip to add custom snippets
+if !exists('g:multi_snips')
+  let g:multi_snips = {}
+endif
+let s:multi_snips = g:multi_snips
 
 if !exists('snippets_dir')
 	let snippets_dir = substitute(globpath(&rtp, 'snippets/'), "\n", ',', 'g')
 endif
 
 fun! s:MakeSnip(scope, trigger, content)
-	if !has_key(s:snippets, a:scope)
-		let s:snippets[a:scope] = {}
-	endif
-	if !has_key(s:snippets[a:scope], a:trigger)
-		let s:snippets[a:scope][a:trigger] = a:content
-	else
-		echom 'Warning in snipMate.vim: Snippet '.a:trigger.' is already defined.'
-				\ .' See :h multi_snip for help on snippets with multiple matches.'
-	endif
+	return s:MakeMultiSnip(a:scope, a:trigger, a:content, 'default')
 endf
 
 fun! s:MakeMultiSnip(scope, trigger, content, desc)
@@ -81,7 +78,7 @@ endf
 " Reset snippets for filetype.
 fun! ResetSnippets(ft)
 	let ft = a:ft == '' ? '_' : a:ft
-	for dict in [s:snippets, s:multi_snips, g:did_ft]
+	for dict in [s:multi_snips, g:did_ft]
 		if has_key(dict, ft)
 			unlet dict[ft]
 		endif
@@ -90,7 +87,7 @@ endf
 
 " Reset snippets for all filetypes.
 fun! ResetAllSnippets()
-	let s:snippets = {} | let s:multi_snips = {} | let g:did_ft = {}
+	let s:multi_snips = {} | let g:did_ft = {}
 endf
 
 " Reload snippets for filetype.
@@ -270,9 +267,7 @@ endf
 fun s:GetSnippet(word, scope)
 	let word = a:word | let snippet = ''
 	while snippet == ''
-		if exists('s:snippets["'.a:scope.'"]["'.escape(word, '\"').'"]')
-			let snippet = s:snippets[a:scope][word]
-		elseif exists('s:multi_snips["'.a:scope.'"]["'.escape(word, '\"').'"]')
+		if exists('s:multi_snips["'.a:scope.'"]["'.escape(word, '\"').'"]')
 			throw 'snipMate: multisnip'
 		elseif match(word, '_\d\+$') != -1
 			let id = matchstr(word, '_\zs\d\+$') - 1
@@ -305,11 +300,7 @@ fun! ShowAvailableSnips()
 	let matchlen = 0
 	let matches = []
 	for scope in [bufnr('%')] + split(&ft, '\.') + ['_']
-		let triggers = has_key(s:snippets, scope) ? keys(s:snippets[scope]) : []
-		if has_key(s:multi_snips, scope)
-			let triggers += keys(s:multi_snips[scope])
-		endif
-		for trigger in triggers
+		for trigger in keys(get(s:multi_snips, scope, {}))
 			for word in words
 				if word == ''
 					let matches += [trigger] " Show all matches if word is empty
