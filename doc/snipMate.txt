@@ -39,10 +39,8 @@ snippet will be updated. To go in reverse, use <shift-tab>.
 ==============================================================================
 SYNTAX                                                        *snippet-syntax*
 
-Snippets can be defined in two ways. They can be in their own file, named
-after their trigger in 'snippets/<filetype>/<trigger>.snippet', or they can be
-defined together in a 'snippets/<filetype>.snippets' file. Note that dotted
-'filetype' syntax is supported -- e.g., you can use >
+Snippets are defined in a 'snippets/<filetype>.snippets' file.
+Note that dotted 'filetype' syntax is supported -- e.g., you can use >
 
 	:set ft=html.eruby
 
@@ -55,8 +53,7 @@ The syntax for snippets in *.snippets files is the following: >
 	more expanded text
 
 Note that the first hard tab after the snippet trigger is required, and not
-expanded in the actual snippet. The syntax for *.snippet files is the same,
-only without the trigger declaration and starting indentation.
+expanded in the actual snippet.
 
 Also note that snippets must be defined using hard tabs. They can be expanded
 to spaces later if desired (see |snipMate-indenting|).
@@ -193,14 +190,6 @@ ExtractSnipsFile({directory}, {filetype})     *ExtractSnipsFile()* *.snippets*
 ExtractSnipsFile() extracts the specified *.snippets file for the given
 filetype. A .snippets file contains multiple snippet declarations for the
 filetype. It is further explained above, in |snippet-syntax|.
-
-ExtractSnips({directory}, {filetype})              *ExtractSnips()* *.snippet*
-
-ExtractSnips() extracts *.snippet files from the specified directory and
-defines them as snippets for the given filetype. The directory tree should
-look like this: 'snippets/<filetype>/<trigger>.snippet'. If the snippet has
-multiple matches, it should look like this:
-'snippets/<filetype>/<trigger>/<name>.snippet' (see |multi_snip|).
 
 ResetAllSnippets()                                        *ResetAllSnippets()*
 ResetAllSnippets() removes all snippets from memory. This is useful to put at
