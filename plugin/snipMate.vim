@@ -156,7 +156,7 @@ fun! TriggerSnippet()
 
 	let word = matchstr(getline('.'), '\S\+\%'.col('.').'c')
 	let multisnip = 0
-	for scope in [bufnr('%')] + split(&ft, '\.') + ['_']
+	for scope in split(&ft, '\.') + ['_']
 		try
 			let [trigger, snippet] = s:GetSnippet(word, scope)
 		catch /^snipMate: multisnip/
@@ -201,7 +201,7 @@ fun! CompleteSnippets()
 
 	" get possible snippets
 	let snippets = []
-	for scope in [bufnr('%')] + split(&ft, '\.') + ['_']
+	for scope in split(&ft, '\.') + ['_']
 		if has_key(s:multi_snips, scope)
 			for key in keys(s:multi_snips[scope])
 				let i = 1
@@ -289,7 +289,7 @@ fun! ShowAvailableSnips()
 	endif
 	let matchlen = 0
 	let matches = []
-	for scope in [bufnr('%')] + split(&ft, '\.') + ['_']
+	for scope in split(&ft, '\.') + ['_']
 		for trigger in keys(get(s:multi_snips, scope, {}))
 			for word in words
 				if word == ''
@@ -313,7 +313,7 @@ endf
 " To enable auto-popup for this completion, add following function to plugin/snipMate.vim:
 fun! GetSnipsInCurrentScope()
   let snips = {}
-  for scope in [bufnr('%')] + split(&ft, '\.') + ['_']
+  for scope in split(&ft, '\.') + ['_']
     call extend(snips, get(s:multi_snips, scope, {}), 'keep')
   endfor
   return snips
