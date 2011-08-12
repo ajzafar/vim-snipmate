@@ -161,6 +161,7 @@ fun! TriggerSnippet()
 			let [trigger, snippet] = s:GetSnippet(word, scope)
 		catch /^snipMate: multisnip/
 			let multisnip = 1
+			let snippet = ''
 		endtry
 		" If word is a trigger for a snippet, delete the trigger & expand
 		" the snippet.
