@@ -24,44 +24,27 @@ if !exists('snippets_dir')
 	let snippets_dir = substitute(globpath(&rtp, 'snippets/'), "\n", ',', 'g')
 endif
 
-fun! MakeSnip(scope, trigger, content, ...)
-	let multisnip = a:0 && a:1 != ''
-	let var = multisnip ? 's:multi_snips' : 's:snippets'
-	if !has_key({var}, a:scope) | let {var}[a:scope] = {} | endif
-	if !has_key({var}[a:scope], a:trigger)
-		let {var}[a:scope][a:trigger] = multisnip ? [[a:1, a:content]] : a:content
-	elseif multisnip | let {var}[a:scope][a:trigger] += [[a:1, a:content]]
+fun! s:MakeSnip(scope, trigger, content)
+	if !has_key(s:snippets, a:scope)
+		let s:snippets[a:scope] = {}
+	endif
+	if !has_key(s:snippets[a:scope], a:trigger)
+		let s:snippets[a:scope][a:trigger] = a:content
 	else
 		echom 'Warning in snipMate.vim: Snippet '.a:trigger.' is already defined.'
 				\ .' See :h multi_snip for help on snippets with multiple matches.'
 	endif
 endf
 
-fun! ExtractSnips(dir, ft)
-	for path in split(globpath(a:dir, '*'), "\n")
-		if isdirectory(path)
-			let pathname = fnamemodify(path, ':t')
-			for snipFile in split(globpath(path, '*.snippet'), "\n")
-				call s:ProcessFile(snipFile, a:ft, pathname)
-			endfor
-		elseif fnamemodify(path, ':e') == 'snippet'
-			call s:ProcessFile(path, a:ft)
-		endif
-	endfor
-endf
-
-" Processes a single-snippet file; optionally add the name of the parent
-" directory for a snippet with multiple matches.
-fun s:ProcessFile(file, ft, ...)
-	let keyword = fnamemodify(a:file, ':t:r')
-	if keyword  == '' | return | endif
-	try
-		let text = join(readfile(a:file), "\n")
-	catch /E484/
-		echom "Error in snipMate.vim: couldn't read file: ".a:file
-	endtry
-	return a:0 ? MakeSnip(a:ft, a:1, text, keyword)
-			\  : MakeSnip(a:ft, keyword, text)
+fun! s:MakeMultiSnip(scope, trigger, content, desc)
+	if !has_key(s:multi_snips, a:scope)
+		let s:multi_snips[a:scope] = {}
+	endif
+	if !has_key(s:multi_snips[a:scope], a:trigger)
+		let s:multi_snips[a:scope][a:trigger] = [[a:desc, a:content]]
+	else
+    let s:multi_snips[a:scope][a:trigger] += [[a:desc, a:content]]
+	endif
 endf
 
 fun! ExtractSnipsFile(file, ft)
@@ -73,17 +56,21 @@ fun! ExtractSnipsFile(file, ft)
 			let content .= strpart(line, 1)."\n"
 			continue
 		elseif inSnip
-			call MakeSnip(a:ft, trigger, content[:-2], name)
+			if empty(desc)
+				call s:MakeSnip(a:ft, trigger, content[:-2])
+			else
+				call s:MakeMultiSnip(a:ft, trigger, content[:-2], desc)
+			endif
 			let inSnip = 0
 		endif
 
 		if line[:6] == 'snippet'
 			let inSnip = 1
 			let trigger = strpart(line, 8)
-			let name = ''
+			let desc = ''
 			let space = stridx(trigger, ' ') + 1
 			if space " Process multi snip
-				let name = strpart(trigger, space)
+				let desc = strpart(trigger, space)
 				let trigger = strpart(trigger, 0, space - 1)
 			endif
 			let content = ''
@@ -136,12 +123,7 @@ endf
 
 " Define "aliasft" snippets for the filetype "realft".
 fun s:DefineSnips(dir, aliasft, realft)
-	for path in split(globpath(a:dir, a:aliasft.'/')."\n".
-					\ globpath(a:dir, a:aliasft.'-*/'), "\n")
-		call ExtractSnips(path, a:realft)
-	endfor
-	for path in split(globpath(a:dir, a:aliasft.'.snippets')."\n".
-					\ globpath(a:dir, a:aliasft.'-*.snippets'), "\n")
+	for path in split(globpath(a:dir, a:aliasft.'.snippets')."\n".globpath(a:dir, a:aliasft.'-*.snippets'), "\n")
 		call ExtractSnipsFile(path, a:realft)
 	endfor
 endf
