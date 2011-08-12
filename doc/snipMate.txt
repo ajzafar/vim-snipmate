@@ -76,10 +76,13 @@ This should hopefully be obvious with the included syntax highlighting.
                                                                *snipMate-${#}*
 Tab stops ~
 
-By default, the cursor is placed at the end of a snippet. To specify where the
-cursor is to be placed next, use "${#}", where the # is the number of the tab
-stop. E.g., to place the cursor first on the id of a <div> tag, and then allow
-the user to press <tab> to go to the middle of it:
+A tab stop, specified by "$#" where # is a number, tells snipMate where to
+position the cursor next. The special tab stop $0 denotes the last cursor
+position; in its absence, the cursor is placed at the end of the snippet.
+
+For example, to place the cursor first on the id of a <div> tag, allow
+the user to press <tab> to go to the middle of it, and finally end after
+</div>:
  >
  snippet div
  	<div id="${1}">
