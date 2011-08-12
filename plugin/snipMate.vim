@@ -173,8 +173,7 @@ fun! TriggerSnippet()
 
 	" launch CompleteSnippets() for multi snips
 	if multisnip == 1
-		call CompleteSnippets()
-		return ''
+		return CompleteSnippets()
 	endif
 
 	if exists('SuperTabKey')
@@ -203,15 +202,6 @@ fun! CompleteSnippets()
 	" get possible snippets
 	let snippets = []
 	for scope in [bufnr('%')] + split(&ft, '\.') + ['_']
-		" get normal snippets
-		if has_key(s:snippets, scope)
-			for key in keys(s:snippets[scope])
-				let item = {}
-				let item['word'] = key
-				call insert(snippets, item)
-			endfor
-		endif
-		" get multi snips
 		if has_key(s:multi_snips, scope)
 			for key in keys(s:multi_snips[scope])
 				let i = 1
@@ -324,7 +314,6 @@ endf
 fun! GetSnipsInCurrentScope()
   let snips = {}
   for scope in [bufnr('%')] + split(&ft, '\.') + ['_']
-    call extend(snips, get(s:snippets, scope, {}), 'keep')
     call extend(snips, get(s:multi_snips, scope, {}), 'keep')
   endfor
   return snips
