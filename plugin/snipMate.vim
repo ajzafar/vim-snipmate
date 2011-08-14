@@ -15,8 +15,18 @@ endif
 let loaded_snips = 1
 if !exists('snips_author') | let snips_author = 'Me' | endif
 
-au BufRead,BufNewFile *.snippets\= set ft=snippet
-au FileType snippet setl noet fdm=expr fde=getline(v:lnum)!~'^\\t\\\\|^$'?'>1':1
+augroup snipmate
+	au BufRead,BufNewFile *.snippets\= set ft=snippet
+	au FileType snippet setl noet fdm=expr fde=getline(v:lnum)!~'^\\t\\\\|^$'?'>1':1
+	au VimEnter * call CreateSnippets(snippets_dir, '_') " Get global snippets
+	au FileType * if &ma | call CreateSnippets(snippets_dir, &ft) | endif
+augroup END
+
+ino <silent> <tab> <c-r>=TriggerSnippet()<cr>
+snor <silent> <tab> <esc>i<right><c-r>=TriggerSnippet()<cr>
+ino <silent> <s-tab> <c-r>=BackwardsSnippet()<cr>
+snor <silent> <s-tab> <esc>i<right><c-r>=BackwardsSnippet()<cr>
+ino <silent> <c-r><tab> <c-r>=ShowAvailableSnips()<cr>
 
 " bind local dict to global dict (debugging purposes)
 " you should use MakeSnip to add custom snippets
