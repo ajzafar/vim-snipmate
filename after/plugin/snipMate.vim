@@ -1,5 +1,4 @@
-" These are the mappings for snipMate.vim. Putting it here ensures that it
-" will be mapped after other plugins such as supertab.vim.
+" These are the mappings for snipMate.vim.
 if !exists('loaded_snips') || exists('s:did_snips_mappings')
 	finish
 endif
