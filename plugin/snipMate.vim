@@ -28,20 +28,11 @@ ino <silent> <s-tab> <c-r>=BackwardsSnippet()<cr>
 snor <silent> <s-tab> <esc>i<right><c-r>=BackwardsSnippet()<cr>
 ino <silent> <c-r><tab> <c-r>=ShowAvailableSnips()<cr>
 
-" bind local dict to global dict (debugging purposes)
-" you should use MakeSnip to add custom snippets
-if !exists('g:multi_snips')
-  let g:multi_snips = {}
-endif
-let s:multi_snips = g:multi_snips
+let s:multi_snips = {}
 
 if !exists('snippets_dir')
 	let snippets_dir = substitute(globpath(&rtp, 'snippets/'), "\n", ',', 'g')
 endif
-
-fun! s:MakeSnip(scope, trigger, content)
-	return s:MakeMultiSnip(a:scope, a:trigger, a:content, 'default')
-endf
 
 fun! s:MakeMultiSnip(scope, trigger, content, desc)
 	if !has_key(s:multi_snips, a:scope)
@@ -50,7 +41,7 @@ fun! s:MakeMultiSnip(scope, trigger, content, desc)
 	if !has_key(s:multi_snips[a:scope], a:trigger)
 		let s:multi_snips[a:scope][a:trigger] = [[a:desc, a:content]]
 	else
-    let s:multi_snips[a:scope][a:trigger] += [[a:desc, a:content]]
+		let s:multi_snips[a:scope][a:trigger] += [[a:desc, a:content]]
 	endif
 endf
 
@@ -59,22 +50,20 @@ fun! ExtractSnipsFile(file, ft)
 	let text = readfile(a:file)
 	let inSnip = 0
 	for line in text + ["\n"]
-		if inSnip && (line[0] == "\t" || line == '')
-			let content .= strpart(line, 1)."\n"
-			continue
-		elseif inSnip
-			if empty(desc)
-				call s:MakeSnip(a:ft, trigger, content[:-2])
+		if inSnip
+			if (line[0] == "\t" || line == '')
+				let content .= strpart(line, 1)."\n"
+				continue
 			else
 				call s:MakeMultiSnip(a:ft, trigger, content[:-2], desc)
+				let inSnip = 0
 			endif
-			let inSnip = 0
 		endif
 
 		if line[:6] == 'snippet'
 			let inSnip = 1
 			let trigger = strpart(line, 8)
-			let desc = ''
+			let desc = 'default'
 			let space = stridx(trigger, ' ') + 1
 			if space " Process multi snip
 				let desc = strpart(trigger, space)
@@ -269,7 +258,7 @@ fun! ShowAvailableSnips()
 		endfor
 	endfor
 
-	" This is required in order to make possible to do normal <C-n> completion 
+	" This is required in order to make possible to do normal <C-n> completion
 	" when no snips are available
 	if !empty(matches)
 		" This is to avoid a bug with Vim when using complete(col - matchlen, matches)
