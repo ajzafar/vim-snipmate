@@ -29,6 +29,7 @@ snor <silent> <s-tab> <esc>i<right><c-r>=BackwardsSnippet()<cr>
 ino <silent> <c-r><tab> <c-r>=ShowAvailableSnips()<cr>
 
 let s:multi_snips = {}
+let g:multi_snips = s:multi_snips
 
 if !exists('snippets_dir')
 	let snippets_dir = substitute(globpath(&rtp, 'snippets/'), "\n", ',', 'g')
@@ -125,55 +126,45 @@ fun s:DefineSnips(dir, aliasft, realft)
 endf
 
 fun! TriggerSnippet()
-	if pumvisible() " Update snippet if completion is used
-		call feedkeys("\<esc>a", 'n') " Close completion menu
-		call feedkeys("\<tab>") | return ''
-	endif
-
 	if exists('g:snipPos') | return snipMate#jumpTabStop(0) | endif
 
-	let word = matchstr(getline('.'), '\S\+\%'.col('.').'c')
-	let multisnip = 0
+	" Grab the trigger (and where it begins)
+	let [trigger, begin] = s:GrabTrigger()
+	" See if we have a snippet for that
 	for scope in split(&ft, '\.') + ['_']
-		try
-			let [trigger, snippet] = s:GetSnippet(word, scope)
-		catch /^snipMate: multisnip/
-			let multisnip = 1
-			let snippet = ''
-		endtry
-		" If word is a trigger for a snippet, delete the trigger & expand
-		" the snippet.
-		if snippet != '' && !multisnip
-			let &undolevels = &undolevels " create new undo point
-			let col = col('.') - len(trigger)
-			sil exe 's/\V'.escape(trigger, '/\.').'\%#//'
-			return snipMate#expandSnip(snippet, col)
+		let snippet = s:GetSnippet(trigger, scope)
+
+		" Found one, remove the trigger and expand the snippet
+		if snippet != ''
+			let &undolevels = &undolevels
+			sil exe 's/\V'.escape(trigger, '/\').'\%#//'
+			return snipMate#expandSnip(snippet, begin)
 		endif
 	endfor
 
-	" launch CompleteSnippets() for multi snips
-	if multisnip == 1
-		return CompleteSnippets()
+	" haven't found one, get some matches
+	let matches = CompleteSnippets(trigger)
+	" no matches? insert a tab
+	if empty(matches) || trigger == ''
+		return "\<tab>"
 	endif
+	call complete(begin, matches)
 
-	return "\<tab>"
+	" only one possible match, trigger it
+	if len(matches) == 1
+		return TriggerSnippet()
+	else
+	" return nothing otherwise we break the completion
+		return ''
+	end
 endf
 
-fun! CompleteSnippets()
-	let line = getline('.')
-	let cur = col('.') - 1
-	let start = cur
+fun! s:GrabTrigger()
+	let trigger = matchstr(getline('.'), '\S\+\%'.col('.').'c')
+	return [trigger, col('.') - len(trigger)]
+endf
 
-	" find completion starting position
-	while start > 0
-		if line[start - 1] =~ '\S'
-			let start -= 1
-		else
-			break
-		endif
-	endwhile
-
-	let word = strpart(line, start, (cur-start))
+fun! CompleteSnippets(trigger)
 
 	" get possible snippets
 	let snippets = []
@@ -184,7 +175,7 @@ fun! CompleteSnippets()
 				for description in s:multi_snips[scope][key]
 					let item = {}
 					let item['word'] = key . '_' . i
-					let item['menu'] = description[0]
+					let item['menu'] = description[1]
 					let item['dup'] = '1'
 					call insert(snippets, item)
 					let i += 1
@@ -192,13 +183,9 @@ fun! CompleteSnippets()
 			endfor
 		endif
 	endfor
-	call filter(snippets, 'v:val.word =~ "^'.word.'"')
+	call filter(snippets, 'v:val.word =~ "^'.a:trigger.'"')
 	call sort(snippets)
-	call complete(start+1, snippets)
-	if len(snippets) == 1
-		return "\<c-r>=TriggerSnippet()\<cr>"
-	endif
-	return ''
+	return snippets
 endf
 
 fun! BackwardsSnippet()
@@ -207,31 +194,15 @@ fun! BackwardsSnippet()
 	return "\<s-tab>"
 endf
 
-" Check if word under cursor is snippet trigger; if it isn't, try checking if
-" the text after non-word characters is (e.g. check for "foo" in "bar.foo")
-fun s:GetSnippet(word, scope)
-	let word = a:word | let snippet = ''
-	while snippet == ''
-		if exists('s:multi_snips["'.a:scope.'"]["'.escape(word, '\"').'"]')
-			throw 'snipMate: multisnip'
-		elseif match(word, '_\d\+$') != -1
-			let id = matchstr(word, '_\zs\d\+$') - 1
-			let snip = matchstr(word, '^.*\ze_\d\+$')
-			if exists('s:multi_snips["'.a:scope.'"]["'.escape(snip, '\"').'"]')
-				let snippet = s:multi_snips[a:scope][snip][id][1]
-				if snippet == '' | break | endif
-			else
-				break
-			endif
-		else
-			if match(word, '\W\w') == -1 | break | endif
-			let word = substitute(word, '.\{-}\W', '', '')
-		endif
-	endw
-	if word == '' && a:word != '.' && stridx(a:word, '.') != -1
-		let [word, snippet] = s:GetSnippet('.', a:scope)
+" Check if trigger is the only usable trigger
+fun s:GetSnippet(trigger, scope)
+	let snippets = get(s:multi_snips[a:scope], a:trigger, [])
+	let id = matchstr(a:trigger, '_\zs\d\+$')
+	if id != ''
+		let snip = matchstr(a:trigger, '^.*\ze_\d\+$')
+		let snippets = get(s:multi_snips[a:scope], snip, [])
 	endif
-	return [word, snippet]
+	return len(snippets) == 1 ? snippets[id - 1][1] : ''
 endf
 
 fun! ShowAvailableSnips()
