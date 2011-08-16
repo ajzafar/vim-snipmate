@@ -50,19 +50,21 @@ fun! ExtractSnipsFile(file, ft)
 	if !filereadable(a:file) | return | endif
 	let text = readfile(a:file)
 	let inSnip = 0
+	let valid = 1
 	for line in text + ["\n"]
 		if inSnip
 			if (line[0] == "\t" || line == '')
 				let content .= strpart(line, 1)."\n"
 				continue
-			else
+			elseif valid
 				call s:MakeMultiSnip(a:ft, trigger, content[:-2], desc)
-				let inSnip = 0
 			endif
+			let inSnip = 0
 		endif
 
 		if line[:6] == 'snippet'
 			let inSnip = 1
+			let valid = 1
 			let trigger = strpart(line, 8)
 			let desc = 'default'
 			let space = stridx(trigger, ' ') + 1
@@ -71,6 +73,11 @@ fun! ExtractSnipsFile(file, ft)
 				let trigger = strpart(trigger, 0, space - 1)
 			endif
 			let content = ''
+
+			if trigger !~ s:GetTriggerRegex('$', '^')
+				echom 'Invalid snippet trigger' trigger
+				let valid = 0
+			endif
 		endif
 	endfor
 endf
@@ -159,9 +166,25 @@ fun! TriggerSnippet()
 	end
 endf
 
+fun! s:GetTriggerRegex(end, ...)
+	let begin = a:0 ? a:1 : ''
+
+	" Valid snippet triggers follow the same rules as abbrevations.
+	" See :h abbreviations
+	" Hopefully someday this regex will be nicer.
+	" Match full-id
+	let re = begin . '\k\+\%(_\d\)\?' . a:end . '\|'
+	" Match end-id. The group uses /\& to match a non-keyword character
+	let re .= begin . '\%(\k\@!\&\S\)\+\k\%(_\d\)\?' . a:end . '\|'
+	" Match non-id
+	let re .= begin . '\S*\%(\k\@!\&\S\)\%(_\d\)\?' . a:end
+
+	return re
+endf
+
 fun! s:GrabTrigger()
-	let trigger = matchstr(getline('.'), '\S\+\%'.col('.').'c')
-	return [trigger, col('.') - len(trigger)]
+	let t = matchstr(getline('.'), s:GetTriggerRegex('\%' . col('.') . 'c'))
+	return [t, col('.') - len(t)]
 endf
 
 fun! CompleteSnippets(trigger)
