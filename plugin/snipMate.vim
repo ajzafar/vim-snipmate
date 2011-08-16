@@ -66,7 +66,7 @@ fun! ExtractSnipsFile(file, ft)
 			let inSnip = 1
 			let valid = 1
 			let trigger = strpart(line, 8)
-			let desc = 'default'
+			let desc = ''
 			let space = stridx(trigger, ' ') + 1
 			if space " Process multi snip
 				let desc = strpart(trigger, space)
@@ -192,19 +192,19 @@ fun! CompleteSnippets(trigger)
 	" get possible snippets
 	let snippets = []
 	for scope in split(&ft, '\.') + ['_']
-		if has_key(s:multi_snips, scope)
-			for key in keys(s:multi_snips[scope])
-				let i = 1
-				for description in s:multi_snips[scope][key]
-					let item = {}
-					let item['word'] = key . '_' . i
-					let item['menu'] = description[1]
-					let item['dup'] = '1'
-					call insert(snippets, item)
-					let i += 1
-				endfor
+		for key in keys(get(s:multi_snips, scope, {}))
+			let i = 1
+			for description in s:multi_snips[scope][key]
+				let item = {}
+				let item['word'] = key . '_' . i
+				let item['abbr'] = key
+				let item['menu'] = len(description[0]) ? description[0] :
+							\ description[1]
+				let item['dup'] = '1'
+				call insert(snippets, item)
+				let i += 1
 			endfor
-		endif
+		endfor
 	endfor
 	call filter(snippets, 'v:val.word =~ "^'.a:trigger.'"')
 	call sort(snippets)
