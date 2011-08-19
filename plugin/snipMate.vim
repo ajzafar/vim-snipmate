@@ -229,37 +229,9 @@ fun s:GetSnippet(trigger, scope)
 endf
 
 fun! ShowAvailableSnips()
-	let line  = getline('.')
-	let col   = col('.')
-	let word  = matchstr(getline('.'), '\S\+\%'.col.'c')
-	let words = [word]
-	if stridx(word, '.')
-		let words += split(word, '\.', 1)
-	endif
-	let matchlen = 0
-	let matches = []
-	for scope in split(&ft, '\.') + ['_']
-		for trigger in keys(get(s:multi_snips, scope, {}))
-			for word in words
-				if word == ''
-					let matches += [trigger] " Show all matches if word is empty
-				elseif trigger =~ '^'.word
-					let matches += [trigger]
-					let len = len(word)
-					if len > matchlen | let matchlen = len | endif
-				endif
-			endfor
-		endfor
-	endfor
-
-	" This is required in order to make possible to do normal <C-n> completion
-	" when no snips are available
-	if !empty(matches)
-		" This is to avoid a bug with Vim when using complete(col - matchlen, matches)
-		" (Issue#46 on the Google Code snipMate issue tracker).
-		call setline(line('.'), substitute(line, repeat('.', matchlen).'\%'.col.'c', '', ''))
-		call complete(col, matches)
-	endif
+	let [trigger, begin] = s:GrabTrigger()
+	let matches = s:GetMatches(trigger)
+	call complete(begin, matches)
 	return ''
 endf
 
