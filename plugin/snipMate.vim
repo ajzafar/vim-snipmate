@@ -18,13 +18,13 @@ if !exists('snips_author') | let snips_author = 'Me' | endif
 augroup snipmate
 	au BufRead,BufNewFile *.snippets\= set ft=snippet
 	au FileType snippet setl noet fdm=expr fde=getline(v:lnum)!~'^\\t\\\\|^$'?'>1':1
-	au VimEnter * call CreateSnippets(snippets_dir, '_') " Get global snippets
-	au FileType * if &ma | call CreateSnippets(snippets_dir, &ft) | endif
+	au VimEnter * call s:CreateSnippets(snippets_dir, '_')
+	au FileType * if &ma | call s:CreateSnippets(snippets_dir, &ft) | endif
 augroup END
 
-inoremap <silent> <Plug>snipmateTrigger  <C-R>=TriggerSnippet()<CR>
-inoremap <silent> <Plug>snipmateBack     <C-R>=BackwardsSnippet()<CR>
-inoremap <silent> <Plug>snipmateShow     <C-R>=ShowAvailableSnips()<CR>
+inoremap <silent> <Plug>snipmateTrigger  <C-R>=<SID>TriggerSnippet()<CR>
+inoremap <silent> <Plug>snipmateBack     <C-R>=<SID>BackwardsSnippet()<CR>
+inoremap <silent> <Plug>snipmateShow     <C-R>=<SID>ShowAvailableSnips()<CR>
 smap     <silent> <Plug>ssnipmateTrigger <Esc>a<Plug>snipmateTrigger
 smap     <silent> <Plug>ssnipmateBack    <Esc>a<Plug>snipmateBack
 
@@ -41,7 +41,7 @@ if !exists('snippets_dir')
 	let snippets_dir = substitute(globpath(&rtp, 'snippets/'), "\n", ',', 'g')
 endif
 
-fun! s:MakeMultiSnip(scope, trigger, content, desc)
+function! s:MakeMultiSnip(scope, trigger, content, desc)
 	if !has_key(s:multi_snips, a:scope)
 		let s:multi_snips[a:scope] = {}
 	endif
@@ -50,9 +50,9 @@ fun! s:MakeMultiSnip(scope, trigger, content, desc)
 	else
 		let s:multi_snips[a:scope][a:trigger] += [[a:desc, a:content]]
 	endif
-endf
+endfunction
 
-fun! ExtractSnipsFile(file, ft)
+function! s:ExtractSnipsFile(file, ft)
 	if !filereadable(a:file) | return | endif
 	let text = readfile(a:file)
 	let inSnip = 0
@@ -86,39 +86,39 @@ fun! ExtractSnipsFile(file, ft)
 			endif
 		endif
 	endfor
-endf
+endfunction
 
 " Reset snippets for filetype.
-fun! ResetSnippets(ft)
+function! ResetSnippets(ft)
 	let ft = a:ft == '' ? '_' : a:ft
 	for dict in [s:multi_snips, g:did_ft]
 		if has_key(dict, ft)
 			unlet dict[ft]
 		endif
 	endfor
-endf
+endfunction
 
 " Reset snippets for all filetypes.
-fun! ResetAllSnippets()
+function! ResetAllSnippets()
 	let s:multi_snips = {} | let g:did_ft = {}
-endf
+endfunction
 
 " Reload snippets for filetype.
-fun! ReloadSnippets(ft)
+function! ReloadSnippets(ft)
 	let ft = a:ft == '' ? '_' : a:ft
 	call ResetSnippets(ft)
 	call CreateSnippets(g:snippets_dir, ft)
-endf
+endfunction
 
 " Reload snippets for all filetypes.
-fun! ReloadAllSnippets()
+function! ReloadAllSnippets()
 	for ft in keys(g:did_ft)
 		call ReloadSnippets(ft)
 	endfor
-endf
+endfunction
 
 let g:did_ft = {}
-fun! CreateSnippets(dir, filetypes)
+function! s:CreateSnippets(dir, filetypes)
 	for ft in split(a:filetypes, '\.')
 		if has_key(g:did_ft, ft) | continue | endif
 		call s:DefineSnips(a:dir, ft, ft)
@@ -129,16 +129,16 @@ fun! CreateSnippets(dir, filetypes)
 		endif
 		let g:did_ft[ft] = 1
 	endfor
-endf
+endfunction
 
 " Define "aliasft" snippets for the filetype "realft".
-fun s:DefineSnips(dir, aliasft, realft)
+function! s:DefineSnips(dir, aliasft, realft)
 	for path in [expand(a:dir).'/'.a:aliasft.'.snippets'] + split(globpath(a:dir, a:aliasft.'/*.snippets'), "\n")
-		call ExtractSnipsFile(path, a:realft)
+		call s:ExtractSnipsFile(path, a:realft)
 	endfor
-endf
+endfunction
 
-fun! TriggerSnippet()
+function! s:TriggerSnippet()
 	if exists('g:snipPos') | return snipMate#jumpTabStop(0) | endif
 
 	" Grab the trigger (and where it begins)
@@ -165,14 +165,14 @@ fun! TriggerSnippet()
 
 	" only one possible match, trigger it
 	if len(matches) == 1
-		return TriggerSnippet()
+		return s:TriggerSnippet()
 	else
 	" return nothing otherwise we break the completion
 		return ''
 	end
-endf
+endfunction
 
-fun! s:GetTriggerRegex(end, ...)
+function! s:GetTriggerRegex(end, ...)
 	let begin = a:0 ? a:1 : ''
 
 	" Valid snippet triggers follow the same rules as abbrevations.
@@ -186,14 +186,14 @@ fun! s:GetTriggerRegex(end, ...)
 	let re .= begin . '\S*\%(\k\@!\&\S\)\%(_\d\)\?' . a:end
 
 	return re
-endf
+endfunction
 
-fun! s:GrabTrigger()
+function! s:GrabTrigger()
 	let t = matchstr(getline('.'), s:GetTriggerRegex('\%' . col('.') . 'c'))
 	return [t, col('.') - len(t)]
-endf
+endfunction
 
-fun! s:GetMatches(trigger)
+function! s:GetMatches(trigger)
 
 	" get possible snippets
 	let snippets = []
@@ -215,16 +215,16 @@ fun! s:GetMatches(trigger)
 	call filter(snippets, 'v:val.word =~ "^'.a:trigger.'"')
 	call sort(snippets)
 	return snippets
-endf
+endfunction
 
-fun! BackwardsSnippet()
+function! s:BackwardsSnippet()
 	if exists('g:snipPos') | return snipMate#jumpTabStop(1) | endif
 
 	return "\<s-tab>"
-endf
+endfunction
 
 " Check if trigger is the only usable trigger
-fun s:GetSnippet(trigger, scope)
+function! s:GetSnippet(trigger, scope)
 	let snippets = get(s:multi_snips[a:scope], a:trigger, [])
 	let id = matchstr(a:trigger, '_\zs\d\+$')
 	if id != ''
@@ -232,13 +232,13 @@ fun s:GetSnippet(trigger, scope)
 		let snippets = get(s:multi_snips[a:scope], snip, [])
 	endif
 	return len(snippets) == 1 ? snippets[id - 1][1] : ''
-endf
+endfunction
 
-fun! ShowAvailableSnips()
+function! s:ShowAvailableSnips()
 	let [trigger, begin] = s:GrabTrigger()
 	let matches = s:GetMatches(trigger)
 	call complete(begin, matches)
 	return ''
-endf
+endfunction
 
 " vim:noet:sw=4:ts=4:ft=vim
