@@ -18,8 +18,7 @@ if !exists('snips_author') | let snips_author = 'Me' | endif
 augroup snipmate
 	au BufRead,BufNewFile *.snippets\= set ft=snippet
 	au FileType snippet setl noet fdm=expr fde=getline(v:lnum)!~'^\\t\\\\|^$'?'>1':1
-	au VimEnter * call s:CreateSnippets(snippets_dir, '_')
-	au FileType * if &ma | call s:CreateSnippets(snippets_dir, &ft) | endif
+	au FileType * if &ma | call s:CreateSnippets(snippets_dir, split(&ft, '\.')) | endif
 augroup END
 
 inoremap <silent> <Plug>snipmateTrigger  <C-R>=<SID>TriggerSnippet()<CR>
@@ -33,6 +32,11 @@ imap <S-Tab>    <Plug>snipmateBack
 imap <C-R><Tab> <Plug>snipmateShow
 smap <Tab>      <Plug>ssnipmateTrigger
 smap <S-Tab>    <Plug>ssnipmateBack
+
+command! -complete=filetype -nargs=* -bar
+			\ ReloadSnippets call s:ReloadSnippets(<f-args>)
+command! -complete=filetype -nargs=* -bar
+			\ ResetSnippets call s:ResetSnippets(<f-args>)
 
 let s:multi_snips = {}
 let g:multi_snips = s:multi_snips
@@ -88,46 +92,18 @@ function! s:ExtractSnipsFile(file, ft)
 	endfor
 endfunction
 
-" Reset snippets for filetype.
-function! ResetSnippets(ft)
-	let ft = a:ft == '' ? '_' : a:ft
-	for dict in [s:multi_snips, g:did_ft]
-		if has_key(dict, ft)
-			unlet dict[ft]
-		endif
-	endfor
-endfunction
-
-" Reset snippets for all filetypes.
-function! ResetAllSnippets()
-	let s:multi_snips = {} | let g:did_ft = {}
-endfunction
-
-" Reload snippets for filetype.
-function! ReloadSnippets(ft)
-	let ft = a:ft == '' ? '_' : a:ft
-	call ResetSnippets(ft)
-	call CreateSnippets(g:snippets_dir, ft)
-endfunction
-
-" Reload snippets for all filetypes.
-function! ReloadAllSnippets()
-	for ft in keys(g:did_ft)
-		call ReloadSnippets(ft)
-	endfor
-endfunction
-
-let g:did_ft = {}
-function! s:CreateSnippets(dir, filetypes)
-	for ft in split(a:filetypes, '\.')
-		if has_key(g:did_ft, ft) | continue | endif
+let s:did_ft = {}
+function! s:CreateSnippets(dir, ...)
+	let scopes = a:0 ? a:1 : s:GetScopes()
+	for ft in scopes
+		if has_key(s:did_ft, ft) | continue | endif
 		call s:DefineSnips(a:dir, ft, ft)
 		if ft == 'objc' || ft == 'cpp' || ft == 'cs'
 			call s:DefineSnips(a:dir, 'c', ft)
 		elseif ft == 'xhtml'
 			call s:DefineSnips(a:dir, 'html', 'xhtml')
 		endif
-		let g:did_ft[ft] = 1
+		let s:did_ft[ft] = 1
 	endfor
 endfunction
 
@@ -239,6 +215,27 @@ function! s:ShowAvailableSnips()
 	let matches = s:GetMatches(trigger)
 	call complete(begin, matches)
 	return ''
+endfunction
+
+function! s:GetScopes()
+	return split(&ft, '\.') + ['_']
+endfunction
+
+" Reload snippets for filetype.
+function! s:ReloadSnippets(...)
+	let scopes = a:0 ? a:000 : s:GetScopes()
+	call call('s:ResetSnippets', scopes)
+	call s:CreateSnippets(g:snippets_dir, scopes)
+endfunction
+
+" Reset snippets for filetype.
+function! s:ResetSnippets(...)
+	let scopes = a:0 ? a:000 : s:GetScopes()
+	for dict in [s:multi_snips, s:did_ft]
+		for scope in scopes
+			unlet! dict[scope]
+		endfor
+	endfor
 endfunction
 
 " vim:noet:sw=4:ts=4:ft=vim
