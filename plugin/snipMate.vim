@@ -150,7 +150,7 @@ fun! TriggerSnippet()
 	endfor
 
 	" haven't found one, get some matches
-	let matches = CompleteSnippets(trigger)
+	let matches = s:GetMatches(trigger)
 	" no matches? insert a tab
 	if empty(matches) || trigger == ''
 		return "\<tab>"
@@ -187,7 +187,7 @@ fun! s:GrabTrigger()
 	return [t, col('.') - len(t)]
 endf
 
-fun! CompleteSnippets(trigger)
+fun! s:GetMatches(trigger)
 
 	" get possible snippets
 	let snippets = []
