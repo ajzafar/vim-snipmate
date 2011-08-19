@@ -22,11 +22,17 @@ augroup snipmate
 	au FileType * if &ma | call CreateSnippets(snippets_dir, &ft) | endif
 augroup END
 
-ino <silent> <tab> <c-r>=TriggerSnippet()<cr>
-snor <silent> <tab> <esc>i<right><c-r>=TriggerSnippet()<cr>
-ino <silent> <s-tab> <c-r>=BackwardsSnippet()<cr>
-snor <silent> <s-tab> <esc>i<right><c-r>=BackwardsSnippet()<cr>
-ino <silent> <c-r><tab> <c-r>=ShowAvailableSnips()<cr>
+inoremap <silent> <Plug>snipmateTrigger  <C-R>=TriggerSnippet()<CR>
+inoremap <silent> <Plug>snipmateBack     <C-R>=BackwardsSnippet()<CR>
+inoremap <silent> <Plug>snipmateShow     <C-R>=ShowAvailableSnips()<CR>
+smap     <silent> <Plug>ssnipmateTrigger <Esc>a<Plug>snipmateTrigger
+smap     <silent> <Plug>ssnipmateBack    <Esc>a<Plug>snipmateBack
+
+imap <Tab>      <Plug>snipmateTrigger
+imap <S-Tab>    <Plug>snipmateBack
+imap <C-R><Tab> <Plug>snipmateShow
+smap <Tab>      <Plug>ssnipmateTrigger
+smap <S-Tab>    <Plug>ssnipmateBack
 
 let s:multi_snips = {}
 let g:multi_snips = s:multi_snips
