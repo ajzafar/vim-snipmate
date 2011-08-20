@@ -44,7 +44,6 @@ command! -complete=filetype -nargs=* -bar
 			\ ResetSnippets call s:ResetSnippets(<f-args>)
 
 let s:multi_snips = {}
-let g:multi_snips = s:multi_snips
 
 if !exists('snippets_dir')
 	let snippets_dir = substitute(globpath(&rtp, 'snippets/'), "\n", ',', 'g')
