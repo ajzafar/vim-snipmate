@@ -15,6 +15,10 @@ endif
 let loaded_snips = 1
 if !exists('snips_author') | let snips_author = 'Me' | endif
 
+" save and reset 'cpo'
+let s:save_cpo = &cpo
+set cpo&vim
+
 augroup snipmate
 	au BufRead,BufNewFile *.snippets\= set ft=snippet
 	au FileType snippet setl noet fdm=expr fde=getline(v:lnum)!~'^\\t\\\\|^$'?'>1':1
@@ -238,5 +242,8 @@ function! s:ResetSnippets(...)
 		endfor
 	endfor
 endfunction
+
+" restore 'cpo'
+let &cpo = s:save_cpo
 
 " vim:noet:sw=4:ts=4:ft=vim
