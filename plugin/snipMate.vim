@@ -18,6 +18,7 @@ if !exists('snips_author') | let snips_author = 'Me' | endif
 augroup snipmate
 	au BufRead,BufNewFile *.snippets\= set ft=snippet
 	au FileType snippet setl noet fdm=expr fde=getline(v:lnum)!~'^\\t\\\\|^$'?'>1':1
+	au VimEnter * call s:CreateSnippets(snippets_dir, ['_'])
 	au FileType * if &ma | call s:CreateSnippets(snippets_dir, split(&ft, '\.')) | endif
 augroup END
 
