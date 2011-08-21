@@ -130,7 +130,7 @@ function! s:TriggerSnippet()
 	" Grab the trigger (and where it begins)
 	let [trigger, begin] = s:GrabTrigger()
 	" See if we have a snippet for that
-	for scope in split(&ft, '\.') + ['_']
+	for scope in s:GetScopes()
 		let snippet = s:GetSnippet(trigger, scope)
 
 		" Found one, remove the trigger and expand the snippet
