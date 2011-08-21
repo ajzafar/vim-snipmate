@@ -205,13 +205,15 @@ endfunction
 
 " Check if trigger is the only usable trigger
 function! s:GetSnippet(trigger, scope)
-	let snippets = get(s:snips[a:scope], a:trigger, [])
-	let id = matchstr(a:trigger, '_\zs\d\+$')
-	if id != ''
-		let snip = matchstr(a:trigger, '^.*\ze_\d\+$')
-		let snippets = get(s:snips[a:scope], snip, [])
+	if a:trigger =~ '_\d\+$'
+		let [trigger, id] = split(a:trigger, '_')
+	else
+		let trigger = a:trigger
+		let id = ''
 	endif
-	return len(snippets) == 1 ? snippets[id - 1][1] : ''
+
+	let snippets = get(s:snips[a:scope], trigger, [])
+	return id || len(snippets) == 1 ? snippets[id - 1][1] : ''
 endfunction
 
 function! s:ShowAvailableSnips()
