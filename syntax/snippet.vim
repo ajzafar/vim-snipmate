@@ -6,9 +6,10 @@ syn match tabStop '\$\d\+'
 syn match snipEscape '\\\\\|\\`'
 syn match snipCommand '\%(\\\@<!\%(\\\\\)*\)\@<=`.\{-}\%(\\\@<!\%(\\\\\)*\)\@<=`'
 syn match snippet '^snippet.*' transparent contains=multiSnipText,snipKeyword
+syn match extends '^extends.*' transparent contains=snipKeyword
 syn match multiSnipText '\S\+ \zs.*' contained
-syn match snipKeyword '^snippet'me=s+8 contained
-syn match snipError "^[^#s\t].*$"
+syn match snipKeyword '^\%(snippet\|extends\)'me=s+8 contained
+syn match snipError "^[^#se\t].*$"
 
 hi link snipComment   Comment
 hi link multiSnipText String

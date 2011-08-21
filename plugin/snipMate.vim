@@ -50,9 +50,6 @@ if !exists('snippets_dir')
 endif
 
 function! s:MakeSnip(scope, trigger, content, desc)
-	if !has_key(s:snips, a:scope)
-		let s:snips[a:scope] = {}
-	endif
 	if !has_key(s:snips[a:scope], a:trigger)
 		let s:snips[a:scope][a:trigger] = [[a:desc, a:content]]
 	else
@@ -60,18 +57,19 @@ function! s:MakeSnip(scope, trigger, content, desc)
 	endif
 endfunction
 
-function! s:ExtractSnipsFile(file, ft)
+function! s:ExtractSnipsFile(file, scope)
 	if !filereadable(a:file) | return | endif
 	let text = readfile(a:file)
 	let inSnip = 0
 	let valid = 1
+	if !has_key(s:snips, a:scope) | let s:snips[a:scope] = {} | endif
 	for line in text + ["\n"]
 		if inSnip
 			if (line[0] == "\t" || line == '')
 				let content .= strpart(line, 1)."\n"
 				continue
 			elseif valid
-				call s:MakeSnip(a:ft, trigger, content[:-2], desc)
+				call s:MakeSnip(a:scope, trigger, content[:-2], desc)
 			endif
 			let inSnip = 0
 		endif
@@ -92,7 +90,21 @@ function! s:ExtractSnipsFile(file, ft)
 				echom 'Invalid snippet trigger' trigger
 				let valid = 0
 			endif
+		elseif line[:6] =~# 'extends'
+			call s:ExtendScope(a:scope, split(strpart(line, 8), ','))
 		endif
+	endfor
+endfunction
+
+function! s:ExtendScope(real_scope, aliases)
+	for alias in a:aliases
+		call s:CreateSnippets(g:snippets_dir, [alias])
+		for trigger in keys(get(s:snips, alias, {}))
+			if !has_key(s:snips[a:real_scope], trigger)
+				let s:snips[a:real_scope][trigger] = []
+			endif
+			call extend(s:snips[a:real_scope][trigger], s:snips[alias][trigger])
+		endfor
 	endfor
 endfunction
 
@@ -101,20 +113,14 @@ function! s:CreateSnippets(dir, ...)
 	let scopes = a:0 ? a:1 : s:GetScopes()
 	for ft in scopes
 		if has_key(s:did_ft, ft) | continue | endif
-		call s:DefineSnips(a:dir, ft, ft)
-		if ft == 'objc' || ft == 'cpp' || ft == 'cs'
-			call s:DefineSnips(a:dir, 'c', ft)
-		elseif ft == 'xhtml'
-			call s:DefineSnips(a:dir, 'html', 'xhtml')
-		endif
+		call s:DefineSnips(a:dir, ft)
 		let s:did_ft[ft] = 1
 	endfor
 endfunction
 
-" Define "aliasft" snippets for the filetype "realft".
-function! s:DefineSnips(dir, aliasft, realft)
-	for path in [expand(a:dir).'/'.a:aliasft.'.snippets'] + split(globpath(a:dir, a:aliasft.'/*.snippets'), "\n")
-		call s:ExtractSnipsFile(path, a:realft)
+function! s:DefineSnips(dir, scope)
+	for path in [expand(a:dir).'/'.a:scope.'.snippets'] + split(globpath(a:dir, a:scope.'/*.snippets'), "\n")
+		call s:ExtractSnipsFile(path, a:scope)
 	endfor
 endfunction
 
