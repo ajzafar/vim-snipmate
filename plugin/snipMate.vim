@@ -19,6 +19,13 @@ if !exists('snips_author') | let snips_author = 'Me' | endif
 let s:save_cpo = &cpo
 set cpo&vim
 
+let s:snips = {}
+if !exists('snippets_dir')
+	let snippets_dir = substitute(globpath(&rtp, 'snippets/'), "\n", ',', 'g')
+endif
+
+" autocmds, maps, commands {{{
+
 augroup snipmate
 	au BufRead,BufNewFile *.snippets\= set ft=snippet
 	au FileType snippet setl noet fdm=expr fde=getline(v:lnum)!~'^\\t\\\\|^$'?'>1':1
@@ -43,18 +50,23 @@ command! -complete=filetype -nargs=* -bar
 command! -complete=filetype -nargs=* -bar
 			\ ResetSnippets call s:ResetSnippets(<f-args>)
 
-let s:snips = {}
+" }}}
+" Snippet creation {{{
 
-if !exists('snippets_dir')
-	let snippets_dir = substitute(globpath(&rtp, 'snippets/'), "\n", ',', 'g')
-endif
+let s:did_ft = {}
+function! s:CreateSnippets(dir, ...)
+	let scopes = a:0 ? a:1 : s:GetScopes()
+	for ft in scopes
+		if has_key(s:did_ft, ft) | continue | endif
+		call s:DefineSnips(a:dir, ft)
+		let s:did_ft[ft] = 1
+	endfor
+endfunction
 
-function! s:MakeSnip(scope, trigger, content, desc)
-	if !has_key(s:snips[a:scope], a:trigger)
-		let s:snips[a:scope][a:trigger] = [[a:desc, a:content]]
-	else
-		let s:snips[a:scope][a:trigger] += [[a:desc, a:content]]
-	endif
+function! s:DefineSnips(dir, scope)
+	for path in [expand(a:dir).'/'.a:scope.'.snippets'] + split(globpath(a:dir, a:scope.'/*.snippets'), "\n")
+		call s:ExtractSnipsFile(path, a:scope)
+	endfor
 endfunction
 
 function! s:ExtractSnipsFile(file, scope)
@@ -96,6 +108,14 @@ function! s:ExtractSnipsFile(file, scope)
 	endfor
 endfunction
 
+function! s:MakeSnip(scope, trigger, content, desc)
+	if !has_key(s:snips[a:scope], a:trigger)
+		let s:snips[a:scope][a:trigger] = [[a:desc, a:content]]
+	else
+		let s:snips[a:scope][a:trigger] += [[a:desc, a:content]]
+	endif
+endfunction
+
 function! s:ExtendScope(real_scope, aliases)
 	for alias in a:aliases
 		call s:CreateSnippets(g:snippets_dir, [alias])
@@ -108,21 +128,8 @@ function! s:ExtendScope(real_scope, aliases)
 	endfor
 endfunction
 
-let s:did_ft = {}
-function! s:CreateSnippets(dir, ...)
-	let scopes = a:0 ? a:1 : s:GetScopes()
-	for ft in scopes
-		if has_key(s:did_ft, ft) | continue | endif
-		call s:DefineSnips(a:dir, ft)
-		let s:did_ft[ft] = 1
-	endfor
-endfunction
-
-function! s:DefineSnips(dir, scope)
-	for path in [expand(a:dir).'/'.a:scope.'.snippets'] + split(globpath(a:dir, a:scope.'/*.snippets'), "\n")
-		call s:ExtractSnipsFile(path, a:scope)
-	endfor
-endfunction
+" }}}
+" Snippet triggering/expansion {{{
 
 function! s:TriggerSnippet()
 	if exists('g:snipPos') | return snipMate#jumpTabStop(0) | endif
@@ -158,22 +165,6 @@ function! s:TriggerSnippet()
 	end
 endfunction
 
-function! s:GetTriggerRegex(end, ...)
-	let begin = a:0 ? a:1 : ''
-
-	" Valid snippet triggers follow the same rules as abbrevations.
-	" See :h abbreviations
-	" Hopefully someday this regex will be nicer.
-	" Match full-id
-	let re = begin . '\k\+\%(_\d\)\?' . a:end . '\|'
-	" Match end-id. The group uses /\& to match a non-keyword character
-	let re .= begin . '\%(\k\@!\&\S\)\+\k\%(_\d\)\?' . a:end . '\|'
-	" Match non-id
-	let re .= begin . '\S*\%(\k\@!\&\S\)\%(_\d\)\?' . a:end
-
-	return re
-endfunction
-
 function! s:GrabTrigger()
 	let t = matchstr(getline('.'), s:GetTriggerRegex('\%' . col('.') . 'c'))
 	return [t, col('.') - len(t)]
@@ -203,12 +194,6 @@ function! s:GetMatches(trigger)
 	return snippets
 endfunction
 
-function! s:BackwardsSnippet()
-	if exists('g:snipPos') | return snipMate#jumpTabStop(1) | endif
-
-	return "\<s-tab>"
-endfunction
-
 " Check if trigger is the only usable trigger
 function! s:GetSnippet(trigger, scope)
 	if a:trigger =~ '_\d\+$'
@@ -222,6 +207,9 @@ function! s:GetSnippet(trigger, scope)
 	return id || len(snippets) == 1 ? snippets[id - 1][1] : ''
 endfunction
 
+" }}}
+" Misc/Utility {{{
+
 function! s:ShowAvailableSnips()
 	let [trigger, begin] = s:GrabTrigger()
 	let matches = s:GetMatches(trigger)
@@ -229,8 +217,29 @@ function! s:ShowAvailableSnips()
 	return ''
 endfunction
 
+function! s:GetTriggerRegex(end, ...)
+	let begin = a:0 ? a:1 : ''
+
+	" Valid snippet triggers follow the same rules as abbrevations.
+	" See :h abbreviations
+	" Hopefully someday this regex will be nicer.
+	" Match full-id
+	let re = begin . '\k\+\%(_\d\)\?' . a:end . '\|'
+	" Match end-id. The group uses /\& to match a non-keyword character
+	let re .= begin . '\%(\k\@!\&\S\)\+\k\%(_\d\)\?' . a:end . '\|'
+	" Match non-id
+	let re .= begin . '\S*\%(\k\@!\&\S\)\%(_\d\)\?' . a:end
+
+	return re
+endfunction
+
 function! s:GetScopes()
 	return split(&ft, '\.') + ['_']
+endfunction
+
+function! s:BackwardsSnippet()
+	if exists('g:snipPos') | return snipMate#jumpTabStop(1) | endif
+	return "\<s-tab>"
 endfunction
 
 " Reload snippets for filetype.
@@ -249,6 +258,8 @@ function! s:ResetSnippets(...)
 		endfor
 	endfor
 endfunction
+
+" }}}
 
 " restore 'cpo'
 let &cpo = s:save_cpo
