@@ -43,20 +43,20 @@ command! -complete=filetype -nargs=* -bar
 command! -complete=filetype -nargs=* -bar
 			\ ResetSnippets call s:ResetSnippets(<f-args>)
 
-let s:multi_snips = {}
+let s:snips = {}
 
 if !exists('snippets_dir')
 	let snippets_dir = substitute(globpath(&rtp, 'snippets/'), "\n", ',', 'g')
 endif
 
-function! s:MakeMultiSnip(scope, trigger, content, desc)
-	if !has_key(s:multi_snips, a:scope)
-		let s:multi_snips[a:scope] = {}
+function! s:MakeSnip(scope, trigger, content, desc)
+	if !has_key(s:snips, a:scope)
+		let s:snips[a:scope] = {}
 	endif
-	if !has_key(s:multi_snips[a:scope], a:trigger)
-		let s:multi_snips[a:scope][a:trigger] = [[a:desc, a:content]]
+	if !has_key(s:snips[a:scope], a:trigger)
+		let s:snips[a:scope][a:trigger] = [[a:desc, a:content]]
 	else
-		let s:multi_snips[a:scope][a:trigger] += [[a:desc, a:content]]
+		let s:snips[a:scope][a:trigger] += [[a:desc, a:content]]
 	endif
 endfunction
 
@@ -71,7 +71,7 @@ function! s:ExtractSnipsFile(file, ft)
 				let content .= strpart(line, 1)."\n"
 				continue
 			elseif valid
-				call s:MakeMultiSnip(a:ft, trigger, content[:-2], desc)
+				call s:MakeSnip(a:ft, trigger, content[:-2], desc)
 			endif
 			let inSnip = 0
 		endif
@@ -82,7 +82,7 @@ function! s:ExtractSnipsFile(file, ft)
 			let trigger = strpart(line, 8)
 			let desc = ''
 			let space = stridx(trigger, ' ') + 1
-			if space " Process multi snip
+			if space " Process snip
 				let desc = strpart(trigger, space)
 				let trigger = strpart(trigger, 0, space - 1)
 			endif
@@ -178,9 +178,9 @@ function! s:GetMatches(trigger)
 	" get possible snippets
 	let snippets = []
 	for scope in split(&ft, '\.') + ['_']
-		for key in keys(get(s:multi_snips, scope, {}))
+		for key in keys(get(s:snips, scope, {}))
 			let i = 1
-			for description in s:multi_snips[scope][key]
+			for description in s:snips[scope][key]
 				let item = {}
 				let item['word'] = key . '_' . i
 				let item['abbr'] = key
@@ -205,11 +205,11 @@ endfunction
 
 " Check if trigger is the only usable trigger
 function! s:GetSnippet(trigger, scope)
-	let snippets = get(s:multi_snips[a:scope], a:trigger, [])
+	let snippets = get(s:snips[a:scope], a:trigger, [])
 	let id = matchstr(a:trigger, '_\zs\d\+$')
 	if id != ''
 		let snip = matchstr(a:trigger, '^.*\ze_\d\+$')
-		let snippets = get(s:multi_snips[a:scope], snip, [])
+		let snippets = get(s:snips[a:scope], snip, [])
 	endif
 	return len(snippets) == 1 ? snippets[id - 1][1] : ''
 endfunction
@@ -235,7 +235,7 @@ endfunction
 " Reset snippets for filetype.
 function! s:ResetSnippets(...)
 	let scopes = a:0 ? a:000 : s:GetScopes()
-	for dict in [s:multi_snips, s:did_ft]
+	for dict in [s:snips, s:did_ft]
 		for scope in scopes
 			unlet! dict[scope]
 		endfor
