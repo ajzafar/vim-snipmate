@@ -64,7 +64,7 @@ function! s:CreateSnippets(dir, ...)
 endfunction
 
 function! s:DefineSnips(dir, scope)
-	for path in [expand(a:dir).'/'.a:scope.'.snippets'] + split(globpath(a:dir, a:scope.'/*.snippets'), "\n")
+	for path in split(globpath(a:dir, a:scope.'.snippets'), "\n") + split(globpath(a:dir, a:scope.'/*.snippets'), "\n")
 		call s:ExtractSnipsFile(path, a:scope)
 	endfor
 endfunction
