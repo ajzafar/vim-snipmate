@@ -29,8 +29,8 @@ endif
 augroup snipmate
 	au BufRead,BufNewFile *.snippets\= set ft=snippet
 	au FileType snippet setl noet fdm=expr fde=getline(v:lnum)!~'^\\t\\\\|^$'?'>1':1
-	au VimEnter * call s:CreateSnippets(snippets_dir, ['_'])
-	au FileType * if &ma | call s:CreateSnippets(snippets_dir, split(&ft, '\.')) | endif
+	au VimEnter * call s:CreateSnippets(['_'])
+	au FileType * if &ma | call s:CreateSnippets(split(&ft, '\.')) | endif
 augroup END
 
 inoremap <silent> <Plug>snipmateTrigger  <C-R>=<SID>TriggerSnippet()<CR>
@@ -54,17 +54,19 @@ command! -complete=filetype -nargs=* -bar
 " Snippet creation {{{
 
 let s:did_ft = {}
-function! s:CreateSnippets(dir, ...)
+function! s:CreateSnippets(...)
 	let scopes = a:0 ? a:1 : s:GetScopes()
 	for ft in scopes
 		if has_key(s:did_ft, ft) | continue | endif
-		call s:DefineSnips(a:dir, ft)
+		call s:DefineSnips(ft)
 		let s:did_ft[ft] = 1
 	endfor
 endfunction
 
-function! s:DefineSnips(dir, scope)
-	for path in split(globpath(a:dir, a:scope.'.snippets'), "\n") + split(globpath(a:dir, a:scope.'/*.snippets'), "\n")
+function! s:DefineSnips(scope)
+	let dir = g:snippets_dir
+	for path in split(globpath(dir, a:scope.'.snippets'), "\n") +
+				\ split(globpath(dir, a:scope.'/*.snippets'), "\n")
 		call s:ExtractSnipsFile(path, a:scope)
 	endfor
 endfunction
@@ -118,7 +120,7 @@ endfunction
 
 function! s:ExtendScope(real_scope, aliases)
 	for alias in a:aliases
-		call s:CreateSnippets(g:snippets_dir, [alias])
+		call s:CreateSnippets([alias])
 		for trigger in keys(get(s:snips, alias, {}))
 			if !has_key(s:snips[a:real_scope], trigger)
 				let s:snips[a:real_scope][trigger] = []
@@ -246,7 +248,7 @@ endfunction
 function! s:ReloadSnippets(...)
 	let scopes = a:0 ? a:000 : s:GetScopes()
 	call call('s:ResetSnippets', scopes)
-	call s:CreateSnippets(g:snippets_dir, scopes)
+	call s:CreateSnippets(scopes)
 endfunction
 
 " Reset snippets for filetype.
