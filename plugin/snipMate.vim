@@ -36,14 +36,14 @@ augroup END
 inoremap <silent> <Plug>snipmateTrigger  <C-R>=<SID>TriggerSnippet()<CR>
 inoremap <silent> <Plug>snipmateBack     <C-R>=<SID>BackwardsSnippet()<CR>
 inoremap <silent> <Plug>snipmateShow     <C-R>=<SID>ShowAvailableSnips()<CR>
-smap     <silent> <Plug>ssnipmateTrigger <Esc>a<Plug>snipmateTrigger
-smap     <silent> <Plug>ssnipmateBack    <Esc>a<Plug>snipmateBack
+smap     <silent> <Plug>snipmateTrigger <Esc>a<Plug>snipmateTrigger
+smap     <silent> <Plug>snipmateBack    <Esc>a<Plug>snipmateBack
 
 imap <Tab>      <Plug>snipmateTrigger
 imap <S-Tab>    <Plug>snipmateBack
 imap <C-R><Tab> <Plug>snipmateShow
-smap <Tab>      <Plug>ssnipmateTrigger
-smap <S-Tab>    <Plug>ssnipmateBack
+smap <Tab>      <Plug>snipmateTrigger
+smap <S-Tab>    <Plug>snipmateBack
 
 command! -complete=filetype -nargs=* -bar
 			\ ReloadSnippets call s:ReloadSnippets(<f-args>)
