@@ -34,16 +34,17 @@ augroup snipmate
 augroup END
 
 inoremap <silent> <Plug>snipmateTrigger  <C-R>=<SID>TriggerSnippet()<CR>
-inoremap <silent> <Plug>snipmateBack     <C-R>=<SID>BackwardsSnippet()<CR>
+inoremap <silent> <Plug>snipmatePrev     <C-R>=<SID>PrevTabStop()<CR>
+inoremap <silent> <Plug>snipmateNext     <C-R>=<SID>NextTabStop()<CR>
 inoremap <silent> <Plug>snipmateShow     <C-R>=<SID>ShowAvailableSnips()<CR>
-smap     <silent> <Plug>snipmateTrigger <Esc>a<Plug>snipmateTrigger
-smap     <silent> <Plug>snipmateBack    <Esc>a<Plug>snipmateBack
+smap     <silent> <Plug>snipmateNext     <Esc>a<Plug>snipmateNext
+smap     <silent> <Plug>snipmatePrev     <Esc>a<Plug>snipmatePrev
 
 imap <Tab>      <Plug>snipmateTrigger
-imap <S-Tab>    <Plug>snipmateBack
+imap <S-Tab>    <Plug>snipmatePrev
 imap <C-R><Tab> <Plug>snipmateShow
-smap <Tab>      <Plug>snipmateTrigger
-smap <S-Tab>    <Plug>snipmateBack
+smap <Tab>      <Plug>snipmateNext
+smap <S-Tab>    <Plug>snipmatePrev
 
 command! -complete=filetype -nargs=* -bar
 			\ ReloadSnippets call s:ReloadSnippets(<f-args>)
@@ -134,7 +135,7 @@ endfunction
 " Snippet triggering/expansion {{{
 
 function! s:TriggerSnippet()
-	if exists('g:snipPos') | return snipMate#jumpTabStop(0) | endif
+	if exists('g:snipPos') | return s:NextTabStop() | endif
 
 	" Grab the trigger (and where it begins)
 	let [trigger, begin] = s:GrabTrigger()
@@ -239,8 +240,13 @@ function! s:GetScopes()
 	return split(&ft, '\.') + ['_']
 endfunction
 
-function! s:BackwardsSnippet()
+function! s:PrevTabStop()
 	if exists('g:snipPos') | return snipMate#jumpTabStop(1) | endif
+	return "\<s-tab>"
+endfunction
+
+function! s:NextTabStop()
+	if exists('g:snipPos') | return snipMate#jumpTabStop(0) | endif
 	return "\<s-tab>"
 endfunction
 
