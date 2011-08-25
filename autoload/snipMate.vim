@@ -38,10 +38,9 @@ fun snipMate#expandSnip(snip, col)
 		endif
 	endif
 
+	" Insert snippet with proper indentation
+	let indent = indent(lnum) + 1
 	call setline(lnum, line.snipLines[0])
-
-	" Autoindent snippet according to previous indentation
-	let indent = matchend(line, '^.\{-}\ze\(\S\|$\)') + 1
 	call append(lnum, map(snipLines[1:], "'".strpart(line, 0, indent - 1)."'.v:val"))
 
 	" Open any folds snippet expands into
