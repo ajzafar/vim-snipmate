@@ -59,6 +59,7 @@ function! s:CreateSnippets(...)
 	let scopes = a:0 ? a:1 : s:GetScopes()
 	for ft in scopes
 		if has_key(s:did_ft, ft) | continue | endif
+		if !has_key(s:snips, ft) | let s:snips[ft] = {} | endif
 		call s:DefineSnips(ft)
 		let s:did_ft[ft] = 1
 	endfor
@@ -77,7 +78,6 @@ function! s:ExtractSnipsFile(file, scope)
 	let text = readfile(a:file)
 	let inSnip = 0
 	let valid = 1
-	if !has_key(s:snips, a:scope) | let s:snips[a:scope] = {} | endif
 	for line in text + ["\n"]
 		if inSnip
 			if (line[0] == "\t" || line == '')
