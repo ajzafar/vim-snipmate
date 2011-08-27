@@ -213,7 +213,7 @@ fun s:BuildTabStops(snip, lnum, col, indent)
 
 		" Get all $# matches in another list, if ${#:name} is given
 		if stridx(withoutVars, '${'.i.':') != -1
-			let snipPos[j][2] = len(s:RemoveTabStops(s:GetPlaceholder(withoutVars, i)))
+			let snipPos[j][2] = strwidth(s:RemoveTabStops(s:GetPlaceholder(withoutVars, i)))
 			let dots = repeat('.', snipPos[j][2])
 			call add(snipPos[j], [])
 
