@@ -277,9 +277,9 @@ fun! Filename(...)
 	let filename = expand('%:t:r')
 	if filename == '' | return a:0 == 2 ? a:2 : '' | endif
 	return !a:0 || a:1 == '' ? filename : substitute(a:1, '$1', filename, 'g')
-endf
+endfunction
 
-fun s:RemoveSnippet()
+function! s:RemoveSnippet()
 	unl! s:tab_stops s:cur_stop s:snipLen s:endCol s:endLine s:prevLen
 	     \ s:lastBuf s:oldWord
 	if exists('s:update')
@@ -287,9 +287,9 @@ fun s:RemoveSnippet()
 		if exists('s:oldVars') | unl s:oldVars s:oldEndCol | endif
 	endif
 	aug! snipMateAutocmds
-endf
+endfunction
 
-fun snipMate#expandSnip(snip, col)
+function! snipMate#expandSnip(snip, col)
 	let lnum = line('.') | let col = a:col
 
 	let snippet = s:ProcessSnippet(a:snip)
@@ -344,10 +344,10 @@ fun snipMate#expandSnip(snip, col)
 					\ + (newlines ? 0: col - 1))
 	endif
 	return ''
-endf
+endfunction
 
 " Prepare snippet to be processed by s:BuildTabStops
-fun s:ProcessSnippet(snip)
+function! s:ProcessSnippet(snip)
 	let snippet = a:snip
 	" Evaluate eval (`...`) expressions.
 	" Backquotes prefixed with a backslash "\" are ignored.
@@ -401,20 +401,20 @@ fun s:ProcessSnippet(snip)
 		return substitute(snippet, '\t', repeat(' ', &sts ? &sts : &sw), 'g')
 	endif
 	return snippet
-endf
+endfunction
 
 " Removes tab stops, leaving only its placeholder; e.g., "${1:baz}" becomes
 " simply "baz".
-fun s:RemoveTabStops(snippet)
+function! s:RemoveTabStops(snippet)
 	let snippet = a:snippet
 	while match(snippet, '${\d\+') != -1
 		let snippet = substitute(snippet, '${\d\+:\=\([^{}]\{-}\)}', '\1', 'g')
 	endw
 	return snippet
-endf
+endfunction
 
 " Removes all tab stops except the one specified.
-fun s:RemoveAllExcept(snippet, skip)
+function! s:RemoveAllExcept(snippet, skip)
 	let i = 1
 	let snippet = a:snippet
 	while stridx(snippet, '${'.i) != -1
@@ -427,17 +427,17 @@ fun s:RemoveAllExcept(snippet, skip)
 		let i += 1
 	endw
 	return snippet
-endf
+endfunction
 
 " Returns the placeholder for a given tabstop, nested placeholders and all.
-fun s:GetPlaceholder(snippet, tabstop)
+function! s:GetPlaceholder(snippet, tabstop)
 	let portion = matchstr(a:snippet, '${'.a:tabstop.':.*}')
 	let portion = strpart(portion, 0, s:SearchPair(portion, '{', '}'))
 	return strpart(portion, stridx(portion, ':') + 1)
-endf
+endfunction
 
 " Returns the end of the nested start-end pair in the given string.
-fun s:SearchPair(string, start, end)
+function! s:SearchPair(string, start, end)
 	let start = stridx(a:string, a:start)
 	let end = -1
 	while 1
@@ -447,10 +447,10 @@ fun s:SearchPair(string, start, end)
 			return end
 		endif
 	endw
-endf
+endfunction
 
 " Counts occurences of haystack in needle
-fun s:Count(haystack, needle)
+function! s:Count(haystack, needle)
 	let counter = 0
 	let index = stridx(a:haystack, a:needle)
 	while index != -1
@@ -458,7 +458,7 @@ fun s:Count(haystack, needle)
 		let counter += 1
 	endw
 	return counter
-endf
+endfunction
 
 " Builds a list of a list of each tab stop in the snippet containing:
 " 1.) The tab stop's line number.
@@ -471,7 +471,7 @@ endf
 "     the matches of "$#", to be replaced with the placeholder. This list is
 "     composed the same way as the parent; the first item is the line number,
 "     and the second is the column.
-fun s:BuildTabStops(snip, lnum, col, indent)
+function! s:BuildTabStops(snip, lnum, col, indent)
 	let snipPos = []
 	let i = 1
 	let withoutVars = substitute(a:snip, '$\d\+', '', 'g')
@@ -506,9 +506,9 @@ fun s:BuildTabStops(snip, lnum, col, indent)
 		let i += 1
 	endw
 	return [snipPos, i - 1]
-endf
+endfunction
 
-fun snipMate#jumpTabStop(backwards)
+function! snipMate#jumpTabStop(backwards)
 	let leftPlaceholder = exists('s:origWordLen')
 	                      \ && s:origWordLen != s:tab_stops[s:cur_stop][2]
 	if leftPlaceholder && exists('s:oldEndCol')
@@ -552,9 +552,9 @@ fun snipMate#jumpTabStop(backwards)
 	let s:prevLen = [line('$'), col('$')]
 
 	return s:tab_stops[s:cur_stop][2] == -1 ? '' : s:SelectWord()
-endf
+endfunction
 
-fun s:UpdatePlaceholderTabStops()
+function! s:UpdatePlaceholderTabStops()
 	let changeLen = s:origWordLen - s:tab_stops[s:cur_stop][2]
 	unl s:startCol s:origWordLen s:update
 	if !exists('s:oldVars') | return | endif
@@ -599,9 +599,9 @@ fun s:UpdatePlaceholderTabStops()
 		endfor
 	endif
 	unl s:endCol s:oldVars s:oldEndCol
-endf
+endfunction
 
-fun s:UpdateTabStops()
+function! s:UpdateTabStops()
 	let changeLine = s:endLine - s:tab_stops[s:cur_stop][0]
 	let changeCol = s:endCol - s:tab_stops[s:cur_stop][1]
 	if exists('s:origWordLen')
@@ -643,9 +643,9 @@ fun s:UpdateTabStops()
 			endfor
 		endfor
 	endif
-endf
+endfunction
 
-fun s:SelectWord()
+function! s:SelectWord()
 	let s:origWordLen = s:tab_stops[s:cur_stop][2]
 	let s:oldWord = strpart(getline('.'), s:tab_stops[s:cur_stop][1] - 1,
 				\ s:origWordLen)
@@ -662,7 +662,7 @@ fun s:SelectWord()
 	endif
 	return s:origWordLen == 1 ? "\<esc>".l.'gh'
 							\ : "\<esc>".l.'v'.(s:origWordLen - 1)."l\<c-g>"
-endf
+endfunction
 
 " This updates the snippet as you type when text needs to be inserted
 " into multiple places (e.g. in "${1:default text}foo$1bar$1",
@@ -672,7 +672,7 @@ endf
 "
 " It also automatically quits the snippet if the cursor is moved out of it
 " while in insert mode.
-fun s:UpdateChangedSnip(entering)
+function! s:UpdateChangedSnip(entering)
 	" If tab stop has been modified, delete any nested placeholders it has.
 	if exists('s:origWordLen') && !exists('s:skip')
 	                         \ && col('$') - (s:prevLen[1] + s:origWordLen)
@@ -732,9 +732,9 @@ fun s:UpdateChangedSnip(entering)
 			call s:RemoveSnippet()
 		endif
 	endif
-endf
+endfunction
 
-fun s:DeleteNestedPlaceholders()
+function! s:DeleteNestedPlaceholders()
 	let s:skip = 0
 	let lnum = line('.')
 	let endPlaceholder = s:tab_stops[s:cur_stop][1] + s:tab_stops[s:cur_stop][2]
@@ -746,11 +746,11 @@ fun s:DeleteNestedPlaceholders()
 		endif
 		let s:skip += 1
 	endfor
-endf
+endfunction
 
 " This updates the variables in a snippet when a placeholder has been edited.
 " (e.g., each "$1" in "${1:foo} $1bar $1bar")
-fun s:UpdateVars()
+function! s:UpdateVars()
 	let newWordLen = s:endCol - s:startCol + 1
 	let newWord = strpart(getline('.'), s:startCol, newWordLen)
 	if newWord == s:oldWord || empty(s:tab_stops[s:cur_stop][3])
@@ -795,7 +795,7 @@ fun s:UpdateVars()
 
 	let s:oldWord = newWord
 	let s:tab_stops[s:cur_stop][2] = newWordLen
-endf
+endfunction
 " vim:noet:sw=4:ts=4:ft=vim
 " }}}
 
