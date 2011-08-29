@@ -273,11 +273,6 @@ endfunction
 
 " }}}
 " autoload {{{
-fun! Filename(...)
-	let filename = expand('%:t:r')
-	if filename == '' | return a:0 == 2 ? a:2 : '' | endif
-	return !a:0 || a:1 == '' ? filename : substitute(a:1, '$1', filename, 'g')
-endfunction
 
 function! s:RemoveSnippet()
 	unl! s:tab_stops s:cur_stop s:snipLen s:endCol s:endLine s:prevLen
