@@ -135,7 +135,12 @@ endfunction
 " Snippet triggering/expansion {{{
 
 function! s:TriggerSnippet()
-	if exists('g:snipPos') | return s:NextTabStop() | endif
+	if exists('g:snipPos')
+		let jump = s:NextTabStop()
+		if jump != ''
+			return jump
+		endif
+	endif
 
 	" Grab the trigger (and where it begins)
 	let [trigger, begin] = s:GrabTrigger()
@@ -246,8 +251,7 @@ function! s:PrevTabStop()
 endfunction
 
 function! s:NextTabStop()
-	if exists('g:snipPos') | return snipMate#jumpTabStop(0) | endif
-	return "\<s-tab>"
+	return snipMate#jumpTabStop(0)
 endfunction
 
 " Reload snippets for filetype.
