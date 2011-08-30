@@ -276,7 +276,7 @@ endfunction
 
 function! s:RemoveSnippet()
 	unl! s:tab_stops s:cur_stop s:snipLen s:endCol s:endLine s:prevLen
-	     \ s:lastBuf s:oldWord
+	     \ s:oldWord
 	if exists('s:has_mirrors')
 		unl s:startCol s:origWordLen s:has_mirrors
 		if exists('s:oldVars') | unl s:oldVars s:oldEndCol | endif
@@ -323,7 +323,6 @@ function! snipMate#expandSnip(snip, col)
 			au CursorMovedI * call s:UpdateChangedSnip(0)
 			au InsertEnter * call s:UpdateChangedSnip(1)
 		aug END
-		let s:lastBuf = bufnr(0) " Only expand snippet while in current buffer
 		let s:cur_stop = 0
 		let s:endCol = s:tab_stops[s:cur_stop][1]
 		let s:endLine = s:tab_stops[s:cur_stop][0]
@@ -674,9 +673,7 @@ function! s:UpdateChangedSnip(entering)
 		call s:DeleteNestedPlaceholders()
 	endif
 
-	if exists('s:tab_stops') && bufnr(0) != s:lastBuf
-		call s:RemoveSnippet()
-	elseif exists('s:has_mirrors') " If modifying a placeholder
+	if exists('s:has_mirrors') " If modifying a placeholder
 		if !exists('s:oldVars') && s:cur_stop + 1 < s:snipLen
 			" Save the old snippet & word length before it's updated.
 			" s:startCol must be saved too, in case text is added
