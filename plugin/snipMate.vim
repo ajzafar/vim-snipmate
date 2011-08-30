@@ -530,9 +530,9 @@ function! snipMate#jumpTabStop(backwards)
 	" Loop over the snippet when going backwards from the beginning
 	if s:cur_stop < 0 | let s:cur_stop = s:snipLen - 1 | endif
 
-	if exists('s:skip') " If a nested placeholder has been added, skip past it.
-		let s:cur_stop += s:skip
-		unl s:skip
+	if exists('s:nested_count') " If a nested placeholder has been added, skip past it.
+		let s:cur_stop += s:nested_count
+		unl s:nested_count
 	endif
 	if s:cur_stop == s:snipLen
 		let sMode = s:endCol == s:tab_stops[s:cur_stop-1][1]+s:tab_stops[s:cur_stop-1][2]
@@ -669,7 +669,7 @@ endfunction
 " while in insert mode.
 function! s:UpdateChangedSnip(entering)
 	" If tab stop has been modified, delete any nested placeholders it has.
-	if exists('s:origWordLen') && !exists('s:skip')
+	if exists('s:origWordLen') && !exists('s:nested_count')
 	                         \ && col('$') - (s:prevLen[1] + s:origWordLen)
 		call s:DeleteNestedPlaceholders()
 	endif
@@ -730,7 +730,7 @@ function! s:UpdateChangedSnip(entering)
 endfunction
 
 function! s:DeleteNestedPlaceholders()
-	let s:skip = 0
+	let s:nested_count = 0
 	let lnum = line('.')
 	let endPlaceholder = s:tab_stops[s:cur_stop][1] + s:tab_stops[s:cur_stop][2]
 	let startPlaceholder = s:tab_stops[s:cur_stop][1]
@@ -739,7 +739,7 @@ function! s:DeleteNestedPlaceholders()
 		 \ tabstop[1] > endPlaceholder || tabstop[1] < startPlaceholder
 			break
 		endif
-		let s:skip += 1
+		let s:nested_count += 1
 	endfor
 endfunction
 
