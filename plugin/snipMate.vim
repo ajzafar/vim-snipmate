@@ -275,8 +275,7 @@ endfunction
 " autoload {{{
 
 function! s:RemoveSnippet()
-	unl! s:tab_stops s:cur_stop s:snipLen s:endCol s:endLine s:prevLen
-	     \ s:oldWord
+	unl! s:tab_stops s:cur_stop s:snipLen s:endCol s:endLine s:prevLen s:oldWord
 	if exists('s:has_mirrors')
 		unl s:startCol s:origWordLen s:has_mirrors
 		if exists('s:oldVars') | unl s:oldVars s:oldEndCol | endif
@@ -328,7 +327,7 @@ function! snipMate#expandSnip(snip, col)
 		let s:endLine = s:tab_stops[s:cur_stop][0]
 
 		call cursor(s:tab_stops[s:cur_stop][0], s:tab_stops[s:cur_stop][1])
-		let s:prevLen = [line('$'), col('$')]
+		let s:prevLen = col('$')
 		if s:tab_stops[s:cur_stop][2] != -1 | return s:SelectWord() | endif
 	else
 		unl s:tab_stops s:snipLen
@@ -543,7 +542,7 @@ function! snipMate#jumpTabStop(backwards)
 
 	let s:endLine = s:tab_stops[s:cur_stop][0]
 	let s:endCol = s:tab_stops[s:cur_stop][1]
-	let s:prevLen = [line('$'), col('$')]
+	let s:prevLen = col('$')
 
 	return s:tab_stops[s:cur_stop][2] == -1 ? '' : s:SelectWord()
 endfunction
@@ -643,7 +642,7 @@ function! s:SelectWord()
 	let s:origWordLen = s:tab_stops[s:cur_stop][2]
 	let s:oldWord = strpart(getline('.'), s:tab_stops[s:cur_stop][1] - 1,
 				\ s:origWordLen)
-	let s:prevLen[1] -= s:origWordLen
+	let s:prevLen -= s:origWordLen
 	if !empty(s:tab_stops[s:cur_stop][3])
 		let s:has_mirrors = 1
 		let s:endCol = -1
@@ -669,7 +668,7 @@ endfunction
 function! s:UpdateChangedSnip(entering)
 	" If tab stop has been modified, delete any nested placeholders it has.
 	if exists('s:origWordLen') && !exists('s:nested_count')
-	                         \ && col('$') - (s:prevLen[1] + s:origWordLen)
+	                         \ && col('$') - (s:prevLen + s:origWordLen)
 		call s:DeleteNestedPlaceholders()
 	endif
 
@@ -684,7 +683,7 @@ function! s:UpdateChangedSnip(entering)
 		let col = col('.') - 1
 
 		if s:endCol != -1
-			let changeLen = col('$') - s:prevLen[1]
+			let changeLen = col('$') - s:prevLen
 			let s:endCol += changeLen
 		else " When being updated the first time, after leaving select mode
 			if a:entering | return | endif
@@ -699,7 +698,7 @@ function! s:UpdateChangedSnip(entering)
 		endif
 
 		call s:UpdateVars()
-		let s:prevLen[1] = col('$')
+		let s:prevLen = col('$')
 	elseif exists('s:tab_stops')
 		if !a:entering && s:tab_stops[s:cur_stop][2] != -1
 			let s:tab_stops[s:cur_stop][2] = -2
@@ -707,15 +706,10 @@ function! s:UpdateChangedSnip(entering)
 
 		let col = col('.')
 		let lnum = line('.')
-		let changeLine = line('$') - s:prevLen[0]
 
 		if lnum == s:endLine
-			let s:endCol += col('$') - s:prevLen[1]
-			let s:prevLen = [line('$'), col('$')]
-		endif
-		if changeLine != 0
-			let s:endLine += changeLine
-			let s:endCol = col
+			let s:endCol += col('$') - s:prevLen
+			let s:prevLen = col('$')
 		endif
 
 		" Delete snippet if cursor moves out of it in insert mode
