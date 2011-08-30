@@ -277,8 +277,8 @@ endfunction
 function! s:RemoveSnippet()
 	unl! s:tab_stops s:cur_stop s:snipLen s:endCol s:endLine s:prevLen
 	     \ s:lastBuf s:oldWord
-	if exists('s:update')
-		unl s:startCol s:origWordLen s:update
+	if exists('s:has_mirrors')
+		unl s:startCol s:origWordLen s:has_mirrors
 		if exists('s:oldVars') | unl s:oldVars s:oldEndCol | endif
 	endif
 	aug! snipMateAutocmds
@@ -510,7 +510,7 @@ function! snipMate#jumpTabStop(backwards)
 		let startPlaceholder = s:oldEndCol + 1
 	endif
 
-	if exists('s:update')
+	if exists('s:has_mirrors')
 		call s:UpdatePlaceholderTabStops()
 	else
 		call s:UpdateTabStops()
@@ -551,7 +551,7 @@ endfunction
 
 function! s:UpdatePlaceholderTabStops()
 	let changeLen = s:origWordLen - s:tab_stops[s:cur_stop][2]
-	unl s:startCol s:origWordLen s:update
+	unl s:startCol s:origWordLen s:has_mirrors
 	if !exists('s:oldVars') | return | endif
 	" Update tab stops in snippet if text has been added via "$#"
 	" (e.g., in "${1:foo}bar$1${2}").
@@ -646,7 +646,7 @@ function! s:SelectWord()
 				\ s:origWordLen)
 	let s:prevLen[1] -= s:origWordLen
 	if !empty(s:tab_stops[s:cur_stop][3])
-		let s:update = 1
+		let s:has_mirrors = 1
 		let s:endCol = -1
 		let s:startCol = s:tab_stops[s:cur_stop][1] - 1
 	endif
@@ -676,7 +676,7 @@ function! s:UpdateChangedSnip(entering)
 
 	if exists('s:tab_stops') && bufnr(0) != s:lastBuf
 		call s:RemoveSnippet()
-	elseif exists('s:update') " If modifying a placeholder
+	elseif exists('s:has_mirrors') " If modifying a placeholder
 		if !exists('s:oldVars') && s:cur_stop + 1 < s:snipLen
 			" Save the old snippet & word length before it's updated.
 			" s:startCol must be saved too, in case text is added
@@ -697,7 +697,7 @@ function! s:UpdateChangedSnip(entering)
 		" If the cursor moves outside the snippet, quit it
 		if line('.') != s:tab_stops[s:cur_stop][0] || col < s:startCol ||
 					\ col - 1 > s:endCol
-			unl! s:startCol s:origWordLen s:oldVars s:update
+			unl! s:startCol s:origWordLen s:oldVars s:has_mirrors
 			return s:RemoveSnippet()
 		endif
 
