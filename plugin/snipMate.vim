@@ -275,7 +275,7 @@ endfunction
 " autoload {{{
 
 function! s:RemoveSnippet()
-	unl! s:tab_stops s:cur_stop s:snipLen s:endCol s:endLine s:prevLen s:oldWord
+	unl! s:tab_stops s:cur_stop s:snipLen s:endCol s:prevLen s:oldWord
 	if exists('s:has_mirrors')
 		unl s:startCol s:origWordLen s:has_mirrors
 		if exists('s:oldVars') | unl s:oldVars s:oldEndCol | endif
@@ -324,7 +324,6 @@ function! snipMate#expandSnip(snip, col)
 		aug END
 		let s:cur_stop = 0
 		let s:endCol = s:tab_stops[s:cur_stop][1]
-		let s:endLine = s:tab_stops[s:cur_stop][0]
 
 		call cursor(s:tab_stops[s:cur_stop][0], s:tab_stops[s:cur_stop][1])
 		let s:prevLen = col('$')
@@ -540,7 +539,6 @@ function! snipMate#jumpTabStop(backwards)
 
 	call cursor(s:tab_stops[s:cur_stop][0], s:tab_stops[s:cur_stop][1])
 
-	let s:endLine = s:tab_stops[s:cur_stop][0]
 	let s:endCol = s:tab_stops[s:cur_stop][1]
 	let s:prevLen = col('$')
 
@@ -595,7 +593,6 @@ function! s:UpdatePlaceholderTabStops()
 endfunction
 
 function! s:UpdateTabStops()
-	let changeLine = s:endLine - s:tab_stops[s:cur_stop][0]
 	let changeCol = s:endCol - s:tab_stops[s:cur_stop][1]
 	if exists('s:origWordLen')
 		let changeCol -= s:origWordLen
@@ -603,24 +600,8 @@ function! s:UpdateTabStops()
 	endif
 	let lnum = s:tab_stops[s:cur_stop][0]
 	let col = s:tab_stops[s:cur_stop][1]
-	" Update the line number of all proceeding tab stops if <cr> has
-	" been inserted.
-	if changeLine != 0
-		let changeLine -= 1
-		for pos in s:tab_stops
-			if pos[0] >= lnum
-				if pos[0] == lnum | let pos[1] += changeCol | endif
-				let pos[0] += changeLine
-			endif
-			if pos[2] == -1 | continue | endif
-			for nPos in pos[3]
-				if nPos[0] >= lnum
-					if nPos[0] == lnum | let nPos[1] += changeCol | endif
-					let nPos[0] += changeLine
-				endif
-			endfor
-		endfor
-	elseif changeCol != 0
+
+	if changeCol != 0
 		" Update the column of all proceeding tab stops if text has
 		" been inserted/deleted in the current line.
 		for pos in s:tab_stops
@@ -706,15 +687,16 @@ function! s:UpdateChangedSnip(entering)
 
 		let col = col('.')
 		let lnum = line('.')
+		let tabstop_line = s:tab_stops[s:cur_stop][0]
 
-		if lnum == s:endLine
+		if lnum == tabstop_line
 			let s:endCol += col('$') - s:prevLen
 			let s:prevLen = col('$')
 		endif
 
 		" Delete snippet if cursor moves out of it in insert mode
-		if (lnum == s:endLine && (col > s:endCol || col < s:tab_stops[s:cur_stop][1]))
-			\ || lnum > s:endLine || lnum < s:tab_stops[s:cur_stop][0]
+		if (lnum == tabstop_line && (col > s:endCol || col < s:tab_stops[s:cur_stop][1]))
+			\ || lnum > tabstop_line || lnum < tabstop_line
 			call s:RemoveSnippet()
 		endif
 	endif
