@@ -275,7 +275,7 @@ endfunction
 " autoload {{{
 
 function! s:RemoveSnippet()
-	unl! s:tab_stops s:cur_stop s:snipLen s:endCol s:prevLen s:oldWord
+	unl! s:tab_stops s:cur_stop s:stop_count s:endCol s:prevLen s:oldWord
 	if exists('s:has_mirrors')
 		unl s:startCol s:origWordLen s:has_mirrors
 		if exists('s:oldVars') | unl s:oldVars s:oldEndCol | endif
@@ -315,9 +315,9 @@ function! snipMate#expandSnip(snip, col)
 	" Open any folds snippet expands into
 	if &fen | sil! exe lnum.','.(lnum + len(snipLines) - 1).'foldopen' | endif
 
-	let [s:tab_stops, s:snipLen] = s:BuildTabStops(snippet, lnum, col - indent, indent)
+	let [s:tab_stops, s:stop_count] = s:BuildTabStops(snippet, lnum, col - indent, indent)
 
-	if s:snipLen
+	if s:stop_count
 		aug snipMateAutocmds
 			au CursorMovedI * call s:UpdateChangedSnip(0)
 			au InsertEnter * call s:UpdateChangedSnip(1)
@@ -329,7 +329,7 @@ function! snipMate#expandSnip(snip, col)
 		let s:prevLen = col('$')
 		if s:tab_stops[s:cur_stop][2] != -1 | return s:SelectWord() | endif
 	else
-		unl s:tab_stops s:snipLen
+		unl s:tab_stops s:stop_count
 		" Place cursor at end of snippet if no tab stop is given
 		let newlines = len(snipLines) - 1
 		call cursor(lnum + newlines, indent + len(snipLines[-1]) - len(afterCursor)
@@ -525,13 +525,13 @@ function! snipMate#jumpTabStop(backwards)
 
 	let s:cur_stop += a:backwards ? -1 : 1
 	" Loop over the snippet when going backwards from the beginning
-	if s:cur_stop < 0 | let s:cur_stop = s:snipLen - 1 | endif
+	if s:cur_stop < 0 | let s:cur_stop = s:stop_count - 1 | endif
 
 	if exists('s:nested_count') " If a nested placeholder has been added, skip past it.
 		let s:cur_stop += s:nested_count
 		unl s:nested_count
 	endif
-	if s:cur_stop == s:snipLen
+	if s:cur_stop == s:stop_count
 		let sMode = s:endCol == s:tab_stops[s:cur_stop-1][1]+s:tab_stops[s:cur_stop-1][2]
 		call s:RemoveSnippet()
 		return sMode ? "\<tab>" : -1
@@ -654,7 +654,7 @@ function! s:UpdateChangedSnip(entering)
 	endif
 
 	if exists('s:has_mirrors') " If modifying a placeholder
-		if !exists('s:oldVars') && s:cur_stop + 1 < s:snipLen
+		if !exists('s:oldVars') && s:cur_stop + 1 < s:stop_count
 			" Save the old snippet & word length before it's updated.
 			" s:startCol must be saved too, in case text is added
 			" before the snippet (e.g. in "foo$1${2}bar${1:foo}").
