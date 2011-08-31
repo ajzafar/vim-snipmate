@@ -315,10 +315,11 @@ function! snipMate#expandSnip(snip, col)
 	" Open any folds snippet expands into
 	if &fen | sil! exe lnum.','.(lnum + len(snipLines) - 1).'foldopen' | endif
 
+	" store tab stop locations and the number of them
 	let [s:tab_stops, s:stop_count] = s:BuildTabStops(snippet, lnum, col - indent, indent)
 
 	if s:stop_count
-		aug snipMateAutocmds
+		aug snipMateAutocmds " Update the snippet when entering insert mode and when the cursor moves
 			au CursorMovedI * call s:UpdateChangedSnip(0)
 			au InsertEnter * call s:UpdateChangedSnip(1)
 		aug END
@@ -608,6 +609,7 @@ function! s:UpdateTabStops()
 			if pos[1] >= col && pos[0] == lnum
 				let pos[1] += changeCol
 			endif
+			" mirrors require a placeholder
 			if pos[2] == -1 | continue | endif
 			for nPos in pos[3]
 				if nPos[0] > lnum | break | endif
