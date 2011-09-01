@@ -137,7 +137,7 @@ endfunction
 function! s:TriggerSnippet()
 	if exists('g:snipPos')
 		let jump = s:NextTabStop()
-		if jump != ''
+		if type(jump) == 1
 			return jump
 		endif
 	endif
