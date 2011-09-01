@@ -170,7 +170,7 @@ function! s:TriggerSnippet()
 	else
 	" return nothing otherwise we break the completion
 		return ''
-	end
+	endif
 endfunction
 
 function! s:GrabTrigger()
@@ -376,7 +376,7 @@ function! s:ProcessSnippet(snip)
 			let snippet = substitute(snippet, '$'.i, s.'&', 'g')
 		endif
 		let i += 1
-	endw
+	endwhile
 
 	" Add ${0} tab stop if found
 	if stridx(snippet, '${0') != -1
@@ -402,7 +402,7 @@ function! s:RemoveTabStops(snippet)
 	let snippet = a:snippet
 	while match(snippet, '${\d\+') != -1
 		let snippet = substitute(snippet, '${\d\+:\=\([^{}]\{-}\)}', '\1', 'g')
-	endw
+	endwhile
 	return snippet
 endfunction
 
@@ -418,7 +418,7 @@ function! s:RemoveAllExcept(snippet, skip)
 			            \ : substitute(snippet, '${'.i.':\('.s.'\)}', '\1', '')
 		endif
 		let i += 1
-	endw
+	endwhile
 	return snippet
 endfunction
 
@@ -439,7 +439,7 @@ function! s:SearchPair(string, start, end)
 		if start == -1 || end < start
 			return end
 		endif
-	endw
+	endwhile
 endfunction
 
 " Counts occurences of haystack in needle
@@ -449,7 +449,7 @@ function! s:Count(haystack, needle)
 	while index != -1
 		let index = stridx(a:haystack, a:needle, index+1)
 		let counter += 1
-	endw
+	endwhile
 	return counter
 endfunction
 
@@ -494,10 +494,10 @@ function! s:BuildTabStops(snip, lnum, col, indent)
 				                           \ ? len(matchstr(beforeMark, '.*\n\zs.*'))
 				                           \ : a:col + len(beforeMark))
 				let withoutOthers = substitute(withoutOthers, '$'.i.'\ze\(\D\|$\)', '', '')
-			endw
+			endwhile
 		endif
 		let i += 1
-	endw
+	endwhile
 	return [snipPos, i - 1]
 endfunction
 
