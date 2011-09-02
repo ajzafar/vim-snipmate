@@ -328,7 +328,7 @@ function! snipMate#expandSnip(snip, col)
 
 		call cursor(s:tab_stops[s:cur_stop][0], s:tab_stops[s:cur_stop][1])
 		let s:prevLen = col('$')
-		if s:tab_stops[s:cur_stop][2] != -1 | return s:SelectWord() | endif
+		if s:tab_stops[s:cur_stop][2] | return s:SelectWord() | endif
 	else
 		unl s:tab_stops s:stop_count
 		" Place cursor at end of snippet if no tab stop is given
@@ -474,7 +474,7 @@ function! s:BuildTabStops(snip, lnum, col, indent)
 		let withoutOthers = s:RemoveAllExcept(withoutVars, i)
 
 		let j = i - 1
-		call add(snipPos, [0, 0, -1])
+		call add(snipPos, [0, 0, 0])
 		let snipPos[j][0] = a:lnum + s:Count(beforeTabStop, "\n")
 		let snipPos[j][1] = a:indent + len(matchstr(withoutOthers, '.*\(\n\|^\)\zs.*\ze${'.i))
 		if snipPos[j][0] == a:lnum | let snipPos[j][1] += a:col | endif
@@ -515,7 +515,7 @@ function! snipMate#jumpTabStop(backwards)
 	endif
 
 	" Don't reselect placeholder if it has been modified
-	if leftPlaceholder && s:tab_stops[s:cur_stop][2] != -1
+	if leftPlaceholder && s:tab_stops[s:cur_stop][2]
 		if exists('startPlaceholder')
 			let s:tab_stops[s:cur_stop][1] = startPlaceholder
 		else
@@ -533,9 +533,8 @@ function! snipMate#jumpTabStop(backwards)
 		unl s:nested_count
 	endif
 	if s:cur_stop == s:stop_count
-		let sMode = s:endCol == s:tab_stops[s:cur_stop-1][1]+s:tab_stops[s:cur_stop-1][2]
 		call s:RemoveSnippet()
-		return sMode ? "\<tab>" : -1
+		return -1
 	endif
 
 	call cursor(s:tab_stops[s:cur_stop][0], s:tab_stops[s:cur_stop][1])
@@ -543,7 +542,7 @@ function! snipMate#jumpTabStop(backwards)
 	let s:endCol = s:tab_stops[s:cur_stop][1]
 	let s:prevLen = col('$')
 
-	return s:tab_stops[s:cur_stop][2] == -1 ? '' : s:SelectWord()
+	return s:tab_stops[s:cur_stop][2] == 0 ? '' : s:SelectWord()
 endfunction
 
 function! s:UpdatePlaceholderTabStops()
@@ -576,7 +575,7 @@ function! s:UpdatePlaceholderTabStops()
 			let pos[2] -= changeLen * changedVars " Parse variables within placeholders
                                                   " e.g., "${1:foo} ${2:$1bar}"
 
-			if pos[2] == -1 | continue | endif
+			if pos[2] == 0 | continue | endif
 			" Do the same to any placeholders in the other tab stops.
 			for nPos in pos[3]
 				let changed = nPos[0] == curLine && nPos[1] > s:oldEndCol
@@ -610,7 +609,7 @@ function! s:UpdateTabStops()
 				let pos[1] += changeCol
 			endif
 			" mirrors require a placeholder
-			if pos[2] == -1 | continue | endif
+			if pos[2] == 0 | continue | endif
 			for nPos in pos[3]
 				if nPos[0] > lnum | break | endif
 				if nPos[0] == lnum && nPos[1] >= col
@@ -683,7 +682,8 @@ function! s:UpdateChangedSnip(entering)
 		call s:UpdateVars()
 		let s:prevLen = col('$')
 	elseif exists('s:tab_stops')
-		if !a:entering && s:tab_stops[s:cur_stop][2] != -1
+		" I have no idea why -2
+		if !a:entering && s:tab_stops[s:cur_stop][2] != 0
 			let s:tab_stops[s:cur_stop][2] = -2
 		endif
 
