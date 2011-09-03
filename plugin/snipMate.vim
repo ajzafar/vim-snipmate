@@ -137,7 +137,7 @@ endfunction
 function! s:TriggerSnippet()
 	if exists('s:tab_stops')
 		let jump = s:NextTabStop()
-		if type(jump) == 1
+		if type(jump) == 1 " returned a string
 			return jump
 		endif
 	endif
@@ -251,7 +251,7 @@ function! s:PrevTabStop()
 endfunction
 
 function! s:NextTabStop()
-	return snipMate#jumpTabStop(0)
+	return exists('s:tab_stops') ? snipMate#jumpTabStop(0) : ''
 endfunction
 
 " Reload snippets for filetype.
@@ -323,12 +323,9 @@ function! snipMate#expandSnip(snip, col)
 			au CursorMovedI * call s:UpdateChangedSnip(0)
 			au InsertEnter * call s:UpdateChangedSnip(1)
 		aug END
-		let s:cur_stop = 0
-		let s:endCol = s:tab_stops[s:cur_stop][1]
+		call s:SetCurStop(0)
 
-		call cursor(s:tab_stops[s:cur_stop][0], s:tab_stops[s:cur_stop][1])
-		let s:prevLen = col('$')
-		if s:tab_stops[s:cur_stop][2] | return s:SelectWord() | endif
+		return s:SelectWord()
 	else
 		unl s:tab_stops s:stop_count
 		" Place cursor at end of snippet if no tab stop is given
@@ -337,6 +334,18 @@ function! snipMate#expandSnip(snip, col)
 					\ + (newlines ? 0: col - 1))
 	endif
 	return ''
+endfunction
+
+function! s:SetCurStop(stop)
+	let s:cur_stop = a:stop
+	let s:endCol = s:tab_stops[s:cur_stop][1]
+	if !empty(s:tab_stops[s:cur_stop][3])
+		let s:has_mirrors = 1
+		let s:endCol = -1
+		let s:startCol = s:tab_stops[s:cur_stop][1] - 1
+	endif
+	call cursor(s:tab_stops[s:cur_stop][0], s:tab_stops[s:cur_stop][1])
+	let s:prevLen = col('$')
 endfunction
 
 " Prepare snippet to be processed by s:BuildTabStops
@@ -366,7 +375,7 @@ function! s:ProcessSnippet(snip)
 
 	" Update a:snip so that all the $# become the text after the colon in their
 	" associated ${#}.
-	" (e.g. "${1:foo}" turns all "$1"'s into "foo")
+	" (e.g. "${1:foo}" turns all "$1"'s into "foo$1")
 	let i = 1
 	while stridx(snippet, '${'.i) != -1
 		let s = s:GetPlaceholder(snippet, i)
@@ -442,7 +451,7 @@ function! s:SearchPair(string, start, end)
 	endwhile
 endfunction
 
-" Counts occurences of haystack in needle
+" Counts occurences of needle in haystack
 function! s:Count(haystack, needle)
 	let counter = 0
 	let index = stridx(a:haystack, a:needle)
@@ -480,11 +489,12 @@ function! s:BuildTabStops(snip, lnum, col, indent)
 		if snipPos[j][0] == a:lnum | let snipPos[j][1] += a:col | endif
 
 		" Get all $# matches in another list, if ${#:name} is given
-		if stridx(withoutVars, '${'.i.':') != -1
+		" if stridx(withoutVars, '${'.i.':') != -1
 			let snipPos[j][2] = strwidth(s:RemoveTabStops(s:GetPlaceholder(withoutVars, i)))
 			let dots = repeat('.', snipPos[j][2])
 			call add(snipPos[j], [])
 
+			" remove mirrors for other tab stops
 			let withoutOthers = substitute(noTabStops, '$'.i.'\@!\d\+', '', 'g')
 			while match(withoutOthers, '$'.i.'\(\D\|$\)') != -1
 				let beforeMark = matchstr(withoutOthers, '^.\{-}\ze'.dots.'$'.i.'\(\D\|$\)')
@@ -495,7 +505,7 @@ function! s:BuildTabStops(snip, lnum, col, indent)
 				                           \ : a:col + len(beforeMark))
 				let withoutOthers = substitute(withoutOthers, '$'.i.'\ze\(\D\|$\)', '', '')
 			endwhile
-		endif
+		" endif
 		let i += 1
 	endwhile
 	return [snipPos, i - 1]
@@ -537,12 +547,8 @@ function! snipMate#jumpTabStop(backwards)
 		return -1
 	endif
 
-	call cursor(s:tab_stops[s:cur_stop][0], s:tab_stops[s:cur_stop][1])
-
-	let s:endCol = s:tab_stops[s:cur_stop][1]
-	let s:prevLen = col('$')
-
-	return s:tab_stops[s:cur_stop][2] == 0 ? '' : s:SelectWord()
+	call s:SetCurStop(s:cur_stop)
+	return s:SelectWord()
 endfunction
 
 function! s:UpdatePlaceholderTabStops()
@@ -575,7 +581,6 @@ function! s:UpdatePlaceholderTabStops()
 			let pos[2] -= changeLen * changedVars " Parse variables within placeholders
                                                   " e.g., "${1:foo} ${2:$1bar}"
 
-			if pos[2] == 0 | continue | endif
 			" Do the same to any placeholders in the other tab stops.
 			for nPos in pos[3]
 				let changed = nPos[0] == curLine && nPos[1] > s:oldEndCol
@@ -608,8 +613,6 @@ function! s:UpdateTabStops()
 			if pos[1] >= col && pos[0] == lnum
 				let pos[1] += changeCol
 			endif
-			" mirrors require a placeholder
-			if pos[2] == 0 | continue | endif
 			for nPos in pos[3]
 				if nPos[0] > lnum | break | endif
 				if nPos[0] == lnum && nPos[1] >= col
@@ -625,11 +628,6 @@ function! s:SelectWord()
 	let s:oldWord = strpart(getline('.'), s:tab_stops[s:cur_stop][1] - 1,
 				\ s:origWordLen)
 	let s:prevLen -= s:origWordLen
-	if !empty(s:tab_stops[s:cur_stop][3])
-		let s:has_mirrors = 1
-		let s:endCol = -1
-		let s:startCol = s:tab_stops[s:cur_stop][1] - 1
-	endif
 	if !s:origWordLen | return '' | endif
 	let l = col('.') != 1 ? 'l' : ''
 	if &sel == 'exclusive'
@@ -654,6 +652,8 @@ function! s:UpdateChangedSnip(entering)
 		call s:DeleteNestedPlaceholders()
 	endif
 
+	let lnum = line('.')
+	let col = col('.')
 	if exists('s:has_mirrors') " If modifying a placeholder
 		if !exists('s:oldVars') && s:cur_stop + 1 < s:stop_count
 			" Save the old snippet & word length before it's updated.
@@ -662,7 +662,7 @@ function! s:UpdateChangedSnip(entering)
 			let s:oldEndCol = s:startCol
 			let s:oldVars = deepcopy(s:tab_stops[s:cur_stop][3])
 		endif
-		let col = col('.') - 1
+		let col -= 1 " No, I don't know why
 
 		if s:endCol != -1
 			let changeLen = col('$') - s:prevLen
@@ -673,7 +673,7 @@ function! s:UpdateChangedSnip(entering)
 		endif
 
 		" If the cursor moves outside the snippet, quit it
-		if line('.') != s:tab_stops[s:cur_stop][0] || col < s:startCol ||
+		if lnum != s:tab_stops[s:cur_stop][0] || col < s:startCol ||
 					\ col - 1 > s:endCol
 			unl! s:startCol s:origWordLen s:oldVars s:has_mirrors
 			return s:RemoveSnippet()
@@ -687,8 +687,6 @@ function! s:UpdateChangedSnip(entering)
 			let s:tab_stops[s:cur_stop][2] = -2
 		endif
 
-		let col = col('.')
-		let lnum = line('.')
 		let tabstop_line = s:tab_stops[s:cur_stop][0]
 
 		if lnum == tabstop_line
