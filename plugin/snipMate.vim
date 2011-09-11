@@ -135,7 +135,7 @@ endfunction
 " Snippet triggering/expansion {{{
 
 function! s:TriggerSnippet()
-	if exists('s:tab_stops')
+	if exists('b:snipstate')
 		let jump = s:NextTabStop()
 		if type(jump) == 1 " returned a string
 			return jump
@@ -246,12 +246,11 @@ function! s:GetScopes()
 endfunction
 
 function! s:PrevTabStop()
-	if exists('s:tab_stops') | return snipMate#jumpTabStop(1) | endif
-	return "\<s-tab>"
+	return exists('b:snipstate') ? b:snipstate.jump_stop(1) : "\<s-tab>"
 endfunction
 
 function! s:NextTabStop()
-	return exists('s:tab_stops') ? snipMate#jumpTabStop(0) : ''
+	return exists('b:snipstate') ? b:snipstate.jump_stop(0) : ''
 endfunction
 
 " Reload snippets for filetype.
@@ -274,13 +273,11 @@ endfunction
 " }}}
 " autoload {{{
 
-function! s:RemoveSnippet()
-	unl! s:tab_stops s:cur_stop s:stop_count s:endCol s:prevLen s:oldWord
-	if exists('s:has_mirrors')
-		unl s:startCol s:origWordLen s:has_mirrors
-		if exists('s:oldVars') | unl s:oldVars s:oldEndCol | endif
-	endif
-	aug! snipMateAutocmds
+let s:state_proto = {}
+
+function! s:state_proto.remove()
+	au! snipMateAutocmds
+	unl! b:snipstate
 endfunction
 
 function! snipMate#expandSnip(snip, col)
@@ -315,19 +312,21 @@ function! snipMate#expandSnip(snip, col)
 	" Open any folds snippet expands into
 	if &fen | sil! exe lnum.','.(lnum + len(snipLines) - 1).'foldopen' | endif
 
+	let b:snipstate = copy(s:state_proto)
+
 	" store tab stop locations and the number of them
-	let [s:tab_stops, s:stop_count] = s:BuildTabStops(snippet, lnum, col - indent, indent)
+	let [b:snipstate.stops, b:snipstate.stop_count] = s:BuildTabStops(snippet, lnum, col - indent, indent)
 
-	if s:stop_count
+	if b:snipstate.stop_count
 		aug snipMateAutocmds " Update the snippet when entering insert mode and when the cursor moves
-			au CursorMovedI * call s:UpdateChangedSnip(0)
-			au InsertEnter * call s:UpdateChangedSnip(1)
+			au CursorMovedI * call b:snipstate.update_changes(0)
+			au InsertEnter * call b:snipstate.update_changes(1)
 		aug END
-		call s:SetCurStop(0)
+		call b:snipstate.set_stop(0)
 
-		return s:SelectWord()
+		return b:snipstate.select_word()
 	else
-		unl s:tab_stops s:stop_count
+		unl b:snipstate
 		" Place cursor at end of snippet if no tab stop is given
 		let newlines = len(snipLines) - 1
 		call cursor(lnum + newlines, indent + len(snipLines[-1]) - len(afterCursor)
@@ -336,16 +335,16 @@ function! snipMate#expandSnip(snip, col)
 	return ''
 endfunction
 
-function! s:SetCurStop(stop)
-	let s:cur_stop = a:stop
-	let s:endCol = s:tab_stops[s:cur_stop][1]
-	if !empty(s:tab_stops[s:cur_stop][3])
-		let s:has_mirrors = 1
-		let s:endCol = -1
-		let s:startCol = s:tab_stops[s:cur_stop][1] - 1
+function! s:state_proto.set_stop(stop)
+	let self.cur_stop = a:stop
+	let self.endCol = self.stops[self.cur_stop][1]
+	if !empty(self.stops[self.cur_stop][3])
+		let self.has_mirrors = 1
+		let self.endCol = -1
+		let self.startCol = self.stops[self.cur_stop][1] - 1
 	endif
-	call cursor(s:tab_stops[s:cur_stop][0], s:tab_stops[s:cur_stop][1])
-	let s:prevLen = col('$')
+	call cursor(self.stops[self.cur_stop][0], self.stops[self.cur_stop][1])
+	let self.prevLen = col('$')
 endfunction
 
 " Prepare snippet to be processed by s:BuildTabStops
@@ -511,63 +510,63 @@ function! s:BuildTabStops(snip, lnum, col, indent)
 	return [snipPos, i - 1]
 endfunction
 
-function! snipMate#jumpTabStop(backwards)
-	let leftPlaceholder = exists('s:origWordLen')
-	                      \ && s:origWordLen != s:tab_stops[s:cur_stop][2]
-	if leftPlaceholder && exists('s:oldEndCol')
-		let startPlaceholder = s:oldEndCol + 1
+function! s:state_proto.jump_stop(backwards)
+	let leftPlaceholder = exists('self.origWordLen')
+	                      \ && self.origWordLen != self.stops[self.cur_stop][2]
+	if leftPlaceholder && exists('self.oldEndCol')
+		let startPlaceholder = self.oldEndCol + 1
 	endif
 
-	if exists('s:has_mirrors')
-		call s:UpdatePlaceholderTabStops()
+	if exists('self.has_mirrors')
+		call self.update_placeholders()
 	else
-		call s:UpdateTabStops()
+		call self.update_stops()
 	endif
 
 	" Don't reselect placeholder if it has been modified
-	if leftPlaceholder && s:tab_stops[s:cur_stop][2]
+	if leftPlaceholder && self.stops[self.cur_stop][2]
 		if exists('startPlaceholder')
-			let s:tab_stops[s:cur_stop][1] = startPlaceholder
+			let self.stops[self.cur_stop][1] = startPlaceholder
 		else
-			let s:tab_stops[s:cur_stop][1] = col('.')
-			let s:tab_stops[s:cur_stop][2] = 0
+			let self.stops[self.cur_stop][1] = col('.')
+			let self.stops[self.cur_stop][2] = 0
 		endif
 	endif
 
-	let s:cur_stop += a:backwards ? -1 : 1
+	let self.cur_stop += a:backwards ? -1 : 1
 	" Loop over the snippet when going backwards from the beginning
-	if s:cur_stop < 0 | let s:cur_stop = s:stop_count - 1 | endif
+	if self.cur_stop < 0 | let self.cur_stop = self.stop_count - 1 | endif
 
-	if exists('s:nested_count') " If a nested placeholder has been added, skip past it.
-		let s:cur_stop += s:nested_count
-		unl s:nested_count
+	if exists('self.nested_count') " If a nested placeholder has been added, skip past it.
+		let self.cur_stop += self.nested_count
+		unl self.nested_count
 	endif
-	if s:cur_stop == s:stop_count
-		call s:RemoveSnippet()
+	if self.cur_stop == self.stop_count
+		call self.remove()
 		return -1
 	endif
 
-	call s:SetCurStop(s:cur_stop)
-	return s:SelectWord()
+	call self.set_stop(self.cur_stop)
+	return self.select_word()
 endfunction
 
-function! s:UpdatePlaceholderTabStops()
-	let changeLen = s:origWordLen - s:tab_stops[s:cur_stop][2]
-	unl s:startCol s:origWordLen s:has_mirrors
-	if !exists('s:oldVars') | return | endif
+function! s:state_proto.update_placeholders()
+	let changeLen = self.origWordLen - self.stops[self.cur_stop][2]
+	unl self.startCol self.origWordLen self.has_mirrors
+	if !exists('self.oldVars') | return | endif
 	" Update tab stops in snippet if text has been added via "$#"
 	" (e.g., in "${1:foo}bar$1${2}").
 	if changeLen != 0
 		let curLine = line('.')
 
-		for pos in s:tab_stops
-			if pos == s:tab_stops[s:cur_stop] | continue | endif
-			let changed = pos[0] == curLine && pos[1] > s:oldEndCol
+		for pos in self.stops
+			if pos == self.stops[self.cur_stop] | continue | endif
+			let changed = pos[0] == curLine && pos[1] > self.oldEndCol
 			let changedVars = 0
 			let endPlaceholder = pos[2] - 1 + pos[1]
 			" Subtract changeLen from each tab stop that was after any of
 			" the current tab stop's placeholders.
-			for [lnum, col] in s:oldVars
+			for [lnum, col] in self.oldVars
 				if lnum > pos[0] | break | endif
 				if pos[0] == lnum
 					if pos[1] > col || (pos[2] == -1 && pos[1] == col)
@@ -583,8 +582,8 @@ function! s:UpdatePlaceholderTabStops()
 
 			" Do the same to any placeholders in the other tab stops.
 			for nPos in pos[3]
-				let changed = nPos[0] == curLine && nPos[1] > s:oldEndCol
-				for [lnum, col] in s:oldVars
+				let changed = nPos[0] == curLine && nPos[1] > self.oldEndCol
+				for [lnum, col] in self.oldVars
 					if lnum > nPos[0] | break | endif
 					if nPos[0] == lnum && nPos[1] > col
 						let changed += 1
@@ -594,22 +593,22 @@ function! s:UpdatePlaceholderTabStops()
 			endfor
 		endfor
 	endif
-	unl s:endCol s:oldVars s:oldEndCol
+	unl self.endCol self.oldVars self.oldEndCol
 endfunction
 
-function! s:UpdateTabStops()
-	let changeCol = s:endCol - s:tab_stops[s:cur_stop][1]
-	if exists('s:origWordLen')
-		let changeCol -= s:origWordLen
-		unl s:origWordLen
+function! s:state_proto.update_stops()
+	let changeCol = self.endCol - self.stops[self.cur_stop][1]
+	if exists('self.origWordLen')
+		let changeCol -= self.origWordLen
+		unl self.origWordLen
 	endif
-	let lnum = s:tab_stops[s:cur_stop][0]
-	let col = s:tab_stops[s:cur_stop][1]
+	let lnum = self.stops[self.cur_stop][0]
+	let col = self.stops[self.cur_stop][1]
 
 	if changeCol != 0
 		" Update the column of all proceeding tab stops if text has
 		" been inserted/deleted in the current line.
-		for pos in s:tab_stops
+		for pos in self.stops
 			if pos[1] >= col && pos[0] == lnum
 				let pos[1] += changeCol
 			endif
@@ -623,18 +622,18 @@ function! s:UpdateTabStops()
 	endif
 endfunction
 
-function! s:SelectWord()
-	let s:origWordLen = s:tab_stops[s:cur_stop][2]
-	let s:oldWord = strpart(getline('.'), s:tab_stops[s:cur_stop][1] - 1,
-				\ s:origWordLen)
-	let s:prevLen -= s:origWordLen
-	if !s:origWordLen | return '' | endif
+function! s:state_proto.select_word()
+	let self.origWordLen = self.stops[self.cur_stop][2]
+	let self.oldWord = strpart(getline('.'), self.stops[self.cur_stop][1] - 1,
+				\ self.origWordLen)
+	let self.prevLen -= self.origWordLen
+	if !self.origWordLen | return '' | endif
 	let l = col('.') != 1 ? 'l' : ''
 	if &sel == 'exclusive'
-		return "\<esc>".l.'v'.s:origWordLen."l\<c-g>"
+		return "\<esc>".l.'v'.self.origWordLen."l\<c-g>"
 	endif
-	return s:origWordLen == 1 ? "\<esc>".l.'gh'
-							\ : "\<esc>".l.'v'.(s:origWordLen - 1)."l\<c-g>"
+	return self.origWordLen == 1 ? "\<esc>".l.'gh'
+							\ : "\<esc>".l.'v'.(self.origWordLen - 1)."l\<c-g>"
 endfunction
 
 " This updates the snippet as you type when text needs to be inserted
@@ -645,101 +644,101 @@ endfunction
 "
 " It also automatically quits the snippet if the cursor is moved out of it
 " while in insert mode.
-function! s:UpdateChangedSnip(entering)
+function! s:state_proto.update_changes(entering)
 	" If tab stop has been modified, delete any nested placeholders it has.
-	if exists('s:origWordLen') && !exists('s:nested_count')
-	                         \ && col('$') - (s:prevLen + s:origWordLen)
-		call s:DeleteNestedPlaceholders()
+	if exists('self.origWordLen') && !exists('self.nested_count')
+	                         \ && col('$') - (self.prevLen + self.origWordLen)
+		call self.delete_nested()
 	endif
 
 	let lnum = line('.')
 	let col = col('.')
-	if exists('s:has_mirrors') " If modifying a placeholder
-		if !exists('s:oldVars') && s:cur_stop + 1 < s:stop_count
+	if exists('self.has_mirrors') " If modifying a placeholder
+		if !exists('self.oldVars') && self.cur_stop + 1 < self.stop_count
 			" Save the old snippet & word length before it's updated.
-			" s:startCol must be saved too, in case text is added
+			" self.startCol must be saved too, in case text is added
 			" before the snippet (e.g. in "foo$1${2}bar${1:foo}").
-			let s:oldEndCol = s:startCol
-			let s:oldVars = deepcopy(s:tab_stops[s:cur_stop][3])
+			let self.oldEndCol = self.startCol
+			let self.oldVars = deepcopy(self.stops[self.cur_stop][3])
 		endif
 		let col -= 1 " No, I don't know why
 
-		if s:endCol != -1
-			let changeLen = col('$') - s:prevLen
-			let s:endCol += changeLen
+		if self.endCol != -1
+			let changeLen = col('$') - self.prevLen
+			let self.endCol += changeLen
 		else " When being updated the first time, after leaving select mode
 			if a:entering | return | endif
-			let s:endCol = col - 1
+			let self.endCol = col - 1
 		endif
 
 		" If the cursor moves outside the snippet, quit it
-		if lnum != s:tab_stops[s:cur_stop][0] || col < s:startCol ||
-					\ col - 1 > s:endCol
-			unl! s:startCol s:origWordLen s:oldVars s:has_mirrors
-			return s:RemoveSnippet()
+		if lnum != self.stops[self.cur_stop][0] || col < self.startCol ||
+					\ col - 1 > self.endCol
+			unl! self.startCol self.origWordLen self.oldVars self.has_mirrors
+			return self.remove()
 		endif
 
-		call s:UpdateVars()
-		let s:prevLen = col('$')
-	elseif exists('s:tab_stops')
+		call self.update_mirrors()
+		let self.prevLen = col('$')
+	elseif exists('self.stops')
 		" I have no idea why -2
-		if !a:entering && s:tab_stops[s:cur_stop][2] != 0
-			let s:tab_stops[s:cur_stop][2] = -2
+		if !a:entering && self.stops[self.cur_stop][2] != 0
+			let self.stops[self.cur_stop][2] = -2
 		endif
 
-		let tabstop_line = s:tab_stops[s:cur_stop][0]
+		let tabstop_line = self.stops[self.cur_stop][0]
 
 		if lnum == tabstop_line
-			let s:endCol += col('$') - s:prevLen
-			let s:prevLen = col('$')
+			let self.endCol += col('$') - self.prevLen
+			let self.prevLen = col('$')
 		endif
 
 		" Delete snippet if cursor moves out of it in insert mode
-		if (lnum == tabstop_line && (col > s:endCol || col < s:tab_stops[s:cur_stop][1]))
+		if (lnum == tabstop_line && (col > self.endCol || col < self.stops[self.cur_stop][1]))
 			\ || lnum > tabstop_line || lnum < tabstop_line
-			call s:RemoveSnippet()
+			call self.remove()
 		endif
 	endif
 endfunction
 
-function! s:DeleteNestedPlaceholders()
-	let s:nested_count = 0
+function! s:state_proto.delete_nested()
+	let self.nested_count = 0
 	let lnum = line('.')
-	let endPlaceholder = s:tab_stops[s:cur_stop][1] + s:tab_stops[s:cur_stop][2]
-	let startPlaceholder = s:tab_stops[s:cur_stop][1]
-	for tabstop in s:tab_stops[(s:cur_stop + 1):]
+	let endPlaceholder = self.stops[self.cur_stop][1] + self.stops[self.cur_stop][2]
+	let startPlaceholder = self.stops[self.cur_stop][1]
+	for tabstop in self.stops[(self.cur_stop + 1):]
 		if tabstop[0] != lnum ||
 		 \ tabstop[1] > endPlaceholder || tabstop[1] < startPlaceholder
 			break
 		endif
-		let s:nested_count += 1
+		let self.nested_count += 1
 	endfor
 endfunction
 
 " This updates the variables in a snippet when a placeholder has been edited.
 " (e.g., each "$1" in "${1:foo} $1bar $1bar")
-function! s:UpdateVars()
-	let newWordLen = s:endCol - s:startCol + 1
-	let newWord = strpart(getline('.'), s:startCol, newWordLen)
-	if newWord == s:oldWord || empty(s:tab_stops[s:cur_stop][3])
+function! s:state_proto.update_mirrors()
+	let newWordLen = self.endCol - self.startCol + 1
+	let newWord = strpart(getline('.'), self.startCol, newWordLen)
+	if newWord == self.oldWord || empty(self.stops[self.cur_stop][3])
 		return
 	endif
 
-	let changeLen = s:tab_stops[s:cur_stop][2] - newWordLen
+	let changeLen = self.stops[self.cur_stop][2] - newWordLen
 	let curLine = line('.')
 	let startCol = col('.')
-	let oldStartSnip = s:startCol
+	let oldStartSnip = self.startCol
 	let updateTabStops = changeLen != 0
 	let i = 0
 
-	for [lnum, col] in s:tab_stops[s:cur_stop][3]
+	for [lnum, col] in self.stops[self.cur_stop][3]
 		if updateTabStops
-			let start = s:startCol
+			let start = self.startCol
 			if lnum == curLine && col <= start
-				let s:startCol -= changeLen
-				let s:endCol -= changeLen
+				let self.startCol -= changeLen
+				let self.endCol -= changeLen
 			endif
-			for nPos in s:tab_stops[s:cur_stop][3][(i):]
+			for nPos in self.stops[self.cur_stop][3][(i):]
 				" This list is in ascending order, so quit if we've gone too far.
 				if nPos[0] > lnum | break | endif
 				if nPos[0] == lnum && nPos[1] > col
@@ -748,21 +747,21 @@ function! s:UpdateVars()
 			endfor
 			if lnum == curLine && col > start
 				let col -= changeLen
-				let s:tab_stops[s:cur_stop][3][i][1] = col
+				let self.stops[self.cur_stop][3][i][1] = col
 			endif
 			let i += 1
 		endif
 
 		" "Very nomagic" is used here to allow special characters.
 		call setline(lnum, substitute(getline(lnum), '\%'.col.'c\V'.
-						\ escape(s:oldWord, '\'), escape(newWord, '\&'), ''))
+						\ escape(self.oldWord, '\'), escape(newWord, '\&'), ''))
 	endfor
-	if oldStartSnip != s:startCol
-		call cursor(0, startCol + s:startCol - oldStartSnip)
+	if oldStartSnip != self.startCol
+		call cursor(0, startCol + self.startCol - oldStartSnip)
 	endif
 
-	let s:oldWord = newWord
-	let s:tab_stops[s:cur_stop][2] = newWordLen
+	let self.oldWord = newWord
+	let self.stops[self.cur_stop][2] = newWordLen
 endfunction
 " vim:noet:sw=4:ts=4:ft=vim
 " }}}
