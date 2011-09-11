@@ -276,7 +276,8 @@ endfunction
 let s:state_proto = {}
 
 function! s:state_proto.remove()
-	au! snipMateAutocmds
+	" Remove all buflocal in group snipmate_changes in the current buffer
+	au! snipmate_changes * <buffer>
 	unl! b:snipstate
 endfunction
 
@@ -318,9 +319,10 @@ function! snipMate#expandSnip(snip, col)
 	let [b:snipstate.stops, b:snipstate.stop_count] = s:BuildTabStops(snippet, lnum, col - indent, indent)
 
 	if b:snipstate.stop_count
-		aug snipMateAutocmds " Update the snippet when entering insert mode and when the cursor moves
-			au CursorMovedI * call b:snipstate.update_changes(0)
-			au InsertEnter * call b:snipstate.update_changes(1)
+		" Update the snippet when entering insert mode and when the cursor moves
+		aug snipmate_changes
+			au CursorMovedI <buffer> call b:snipstate.update_changes(0)
+			au InsertEnter <buffer> call b:snipstate.update_changes(1)
 		aug END
 		call b:snipstate.set_stop(0)
 
