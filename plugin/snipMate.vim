@@ -338,14 +338,15 @@ function! snipMate#expandSnip(snip, col)
 endfunction
 
 function! s:state_proto.set_stop(stop)
-	let self.cur_stop = a:stop
-	let self.endCol = self.stops[self.cur_stop][1]
-	if !empty(self.stops[self.cur_stop][3])
+	let self.stop_no     = a:stop
+	let self.cur_stop    = self.stops[self.stop_no]
+	let self.endCol      = self.cur_stop[1]
+	if !empty(self.cur_stop[3])
 		let self.has_mirrors = 1
 		let self.endCol = -1
-		let self.startCol = self.stops[self.cur_stop][1] - 1
+		let self.startCol = self.cur_stop[1] - 1
 	endif
-	call cursor(self.stops[self.cur_stop][0], self.stops[self.cur_stop][1])
+	call cursor(self.cur_stop[0], self.cur_stop[1])
 	let self.prevLen = col('$')
 endfunction
 
@@ -514,7 +515,7 @@ endfunction
 
 function! s:state_proto.jump_stop(backwards)
 	let leftPlaceholder = exists('self.origWordLen')
-	                      \ && self.origWordLen != self.stops[self.cur_stop][2]
+	                      \ && self.origWordLen != self.cur_stop[2]
 	if leftPlaceholder && exists('self.oldEndCol')
 		let startPlaceholder = self.oldEndCol + 1
 	endif
@@ -526,34 +527,34 @@ function! s:state_proto.jump_stop(backwards)
 	endif
 
 	" Don't reselect placeholder if it has been modified
-	if leftPlaceholder && self.stops[self.cur_stop][2]
+	if leftPlaceholder && self.cur_stop[2]
 		if exists('startPlaceholder')
-			let self.stops[self.cur_stop][1] = startPlaceholder
+			let self.cur_stop[1] = startPlaceholder
 		else
-			let self.stops[self.cur_stop][1] = col('.')
-			let self.stops[self.cur_stop][2] = 0
+			let self.cur_stop[1] = col('.')
+			let self.cur_stop[2] = 0
 		endif
 	endif
 
-	let self.cur_stop += a:backwards ? -1 : 1
+	let self.stop_no += a:backwards ? -1 : 1
 	" Loop over the snippet when going backwards from the beginning
-	if self.cur_stop < 0 | let self.cur_stop = self.stop_count - 1 | endif
+	if self.stop_no < 0 | let self.stop_no = self.stop_count - 1 | endif
 
 	if exists('self.nested_count') " If a nested placeholder has been added, skip past it.
-		let self.cur_stop += self.nested_count
+		let self.stop_no += self.nested_count
 		unl self.nested_count
 	endif
-	if self.cur_stop == self.stop_count
+	if self.stop_no == self.stop_count
 		call self.remove()
 		return -1
 	endif
 
-	call self.set_stop(self.cur_stop)
+	call self.set_stop(self.stop_no)
 	return self.select_word()
 endfunction
 
 function! s:state_proto.update_placeholders()
-	let changeLen = self.origWordLen - self.stops[self.cur_stop][2]
+	let changeLen = self.origWordLen - self.cur_stop[2]
 	unl self.startCol self.origWordLen self.has_mirrors
 	if !exists('self.oldVars') | return | endif
 	" Update tab stops in snippet if text has been added via "$#"
@@ -562,7 +563,7 @@ function! s:state_proto.update_placeholders()
 		let curLine = line('.')
 
 		for pos in self.stops
-			if pos == self.stops[self.cur_stop] | continue | endif
+			if pos == self.cur_stop | continue | endif
 			let changed = pos[0] == curLine && pos[1] > self.oldEndCol
 			let changedVars = 0
 			let endPlaceholder = pos[2] - 1 + pos[1]
@@ -599,13 +600,13 @@ function! s:state_proto.update_placeholders()
 endfunction
 
 function! s:state_proto.update_stops()
-	let changeCol = self.endCol - self.stops[self.cur_stop][1]
+	let changeCol = self.endCol - self.cur_stop[1]
 	if exists('self.origWordLen')
 		let changeCol -= self.origWordLen
 		unl self.origWordLen
 	endif
-	let lnum = self.stops[self.cur_stop][0]
-	let col = self.stops[self.cur_stop][1]
+	let lnum = self.cur_stop[0]
+	let col = self.cur_stop[1]
 
 	if changeCol != 0
 		" Update the column of all proceeding tab stops if text has
@@ -625,8 +626,8 @@ function! s:state_proto.update_stops()
 endfunction
 
 function! s:state_proto.select_word()
-	let self.origWordLen = self.stops[self.cur_stop][2]
-	let self.oldWord = strpart(getline('.'), self.stops[self.cur_stop][1] - 1,
+	let self.origWordLen = self.cur_stop[2]
+	let self.oldWord = strpart(getline('.'), self.cur_stop[1] - 1,
 				\ self.origWordLen)
 	let self.prevLen -= self.origWordLen
 	if !self.origWordLen | return '' | endif
@@ -656,12 +657,12 @@ function! s:state_proto.update_changes(entering)
 	let lnum = line('.')
 	let col = col('.')
 	if exists('self.has_mirrors') " If modifying a placeholder
-		if !exists('self.oldVars') && self.cur_stop + 1 < self.stop_count
+		if !exists('self.oldVars') && self.stop_no + 1 < self.stop_count
 			" Save the old snippet & word length before it's updated.
 			" self.startCol must be saved too, in case text is added
 			" before the snippet (e.g. in "foo$1${2}bar${1:foo}").
 			let self.oldEndCol = self.startCol
-			let self.oldVars = deepcopy(self.stops[self.cur_stop][3])
+			let self.oldVars = deepcopy(self.cur_stop[3])
 		endif
 		let col -= 1 " No, I don't know why
 
@@ -674,7 +675,7 @@ function! s:state_proto.update_changes(entering)
 		endif
 
 		" If the cursor moves outside the snippet, quit it
-		if lnum != self.stops[self.cur_stop][0] || col < self.startCol ||
+		if lnum != self.cur_stop[0] || col < self.startCol ||
 					\ col - 1 > self.endCol
 			unl! self.startCol self.origWordLen self.oldVars self.has_mirrors
 			return self.remove()
@@ -684,11 +685,11 @@ function! s:state_proto.update_changes(entering)
 		let self.prevLen = col('$')
 	elseif exists('self.stops')
 		" I have no idea why -2
-		if !a:entering && self.stops[self.cur_stop][2] != 0
-			let self.stops[self.cur_stop][2] = -2
+		if !a:entering && self.cur_stop[2] != 0
+			let self.cur_stop[2] = -2
 		endif
 
-		let tabstop_line = self.stops[self.cur_stop][0]
+		let tabstop_line = self.cur_stop[0]
 
 		if lnum == tabstop_line
 			let self.endCol += col('$') - self.prevLen
@@ -696,7 +697,7 @@ function! s:state_proto.update_changes(entering)
 		endif
 
 		" Delete snippet if cursor moves out of it in insert mode
-		if (lnum == tabstop_line && (col > self.endCol || col < self.stops[self.cur_stop][1]))
+		if (lnum == tabstop_line && (col > self.endCol || col < self.cur_stop[1]))
 			\ || lnum > tabstop_line || lnum < tabstop_line
 			call self.remove()
 		endif
@@ -706,9 +707,9 @@ endfunction
 function! s:state_proto.delete_nested()
 	let self.nested_count = 0
 	let lnum = line('.')
-	let endPlaceholder = self.stops[self.cur_stop][1] + self.stops[self.cur_stop][2]
-	let startPlaceholder = self.stops[self.cur_stop][1]
-	for tabstop in self.stops[(self.cur_stop + 1):]
+	let endPlaceholder = self.cur_stop[1] + self.cur_stop[2]
+	let startPlaceholder = self.cur_stop[1]
+	for tabstop in self.stops[(self.stop_no + 1):]
 		if tabstop[0] != lnum ||
 		 \ tabstop[1] > endPlaceholder || tabstop[1] < startPlaceholder
 			break
@@ -722,25 +723,25 @@ endfunction
 function! s:state_proto.update_mirrors()
 	let newWordLen = self.endCol - self.startCol + 1
 	let newWord = strpart(getline('.'), self.startCol, newWordLen)
-	if newWord == self.oldWord || empty(self.stops[self.cur_stop][3])
+	if newWord == self.oldWord || empty(self.cur_stop[3])
 		return
 	endif
 
-	let changeLen = self.stops[self.cur_stop][2] - newWordLen
+	let changeLen = self.cur_stop[2] - newWordLen
 	let curLine = line('.')
 	let startCol = col('.')
 	let oldStartSnip = self.startCol
 	let updateTabStops = changeLen != 0
 	let i = 0
 
-	for [lnum, col] in self.stops[self.cur_stop][3]
+	for [lnum, col] in self.cur_stop[3]
 		if updateTabStops
 			let start = self.startCol
 			if lnum == curLine && col <= start
 				let self.startCol -= changeLen
 				let self.endCol -= changeLen
 			endif
-			for nPos in self.stops[self.cur_stop][3][(i):]
+			for nPos in self.cur_stop[3][(i):]
 				" This list is in ascending order, so quit if we've gone too far.
 				if nPos[0] > lnum | break | endif
 				if nPos[0] == lnum && nPos[1] > col
@@ -749,7 +750,7 @@ function! s:state_proto.update_mirrors()
 			endfor
 			if lnum == curLine && col > start
 				let col -= changeLen
-				let self.stops[self.cur_stop][3][i][1] = col
+				let self.cur_stop[3][i][1] = col
 			endif
 			let i += 1
 		endif
@@ -763,7 +764,7 @@ function! s:state_proto.update_mirrors()
 	endif
 
 	let self.oldWord = newWord
-	let self.stops[self.cur_stop][2] = newWordLen
+	let self.cur_stop[2] = newWordLen
 endfunction
 " }}}
 
