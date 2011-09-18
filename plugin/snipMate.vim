@@ -68,6 +68,7 @@ function! s:CreateSnippets(...)
 	endfor
 endfunction
 
+" Parses a snippets file
 function! s:ExtractSnipsFile(file, scope)
 	if !filereadable(a:file) | return | endif
 	let text = readfile(a:file)
@@ -270,8 +271,9 @@ endfunction
 
 let s:state_proto = {}
 
+" Removes snippet state info
 function! s:state_proto.remove()
-	" Remove all buflocal in group snipmate_changes in the current buffer
+	" Remove all autocmds in group snipmate_changes in the current buffer
 	au! snipmate_changes * <buffer>
 	unl! b:snipstate
 endfunction
@@ -332,6 +334,7 @@ function! snipMate#expandSnip(snip, col)
 	return ''
 endfunction
 
+" Update state information to correspond to the given tab stop
 function! s:state_proto.set_stop(stop)
 	let self.stop_no     = a:stop
 	let self.cur_stop    = self.stops[self.stop_no]
@@ -461,12 +464,10 @@ endfunction
 " 2.) The tab stop's column number
 "     (by getting the length of the string between the last "\n" and the
 "     tab stop).
-" 3.) The length of the text after the colon for the current tab stop
-"     (e.g. "${1:foo}" would return 3). If there is no text, -1 is returned.
-" 4.) If the "${#:}" construct is given, another list containing all
-"     the matches of "$#", to be replaced with the placeholder. This list is
-"     composed the same way as the parent; the first item is the line number,
-"     and the second is the column.
+" 3.) The length of the placeholder for the current tab stop or 0 for no
+"     placeholder. "${1}" would be 0; "${1:foo}" would be 3.
+" 4.) A list of [line, column] representing any mirrors for the tab stop. The
+"     list is empty if there are no mirrors.
 function! s:BuildTabStops(snip, lnum, col, indent)
 	let snipPos = []
 	let i = 1
@@ -505,7 +506,9 @@ function! s:BuildTabStops(snip, lnum, col, indent)
 	return [snipPos, i - 1]
 endfunction
 
+" Jump to the next/previous tab stop
 function! s:state_proto.jump_stop(backwards)
+	" Update the locations of tab stops for any changes made
 	if self.has_mirrors
 		call self.update_placeholders()
 	else
@@ -532,6 +535,7 @@ function! s:state_proto.jump_stop(backwards)
 	return self.select_word()
 endfunction
 
+" Updates tab stops/mirrors
 function! s:state_proto.update_placeholders()
 	let changeLen = self.endCol - self.cur_stop[2] - self.startCol
 	if !exists('self.oldVars') | return | endif
@@ -577,6 +581,7 @@ function! s:state_proto.update_placeholders()
 	unl self.oldVars
 endfunction
 
+" Updates tab stops/mirrors
 function! s:state_proto.update_stops()
 	let changeCol = self.endCol - self.cur_stop[2] - self.startCol
 	let lnum = self.cur_stop[0]
@@ -599,6 +604,7 @@ function! s:state_proto.update_stops()
 	endif
 endfunction
 
+" Select the placeholder for the current tab stop
 function! s:state_proto.select_word()
 	let len = self.cur_stop[2]
 	if !len | return '' | endif
@@ -609,14 +615,9 @@ function! s:state_proto.select_word()
 	return len == 1 ? "\<esc>".l.'gh' : "\<esc>".l.'v'.(len - 1)."l\<c-g>"
 endfunction
 
-" This updates the snippet as you type when text needs to be inserted
-" into multiple places (e.g. in "${1:default text}foo$1bar$1",
-" "default text" would be highlighted, and if the user types something,
-" UpdateChangedSnip() would be called so that the text after "foo" & "bar"
-" are updated accordingly)
-"
-" It also automatically quits the snippet if the cursor is moved out of it
-" while in insert mode.
+" Update the snippet as text is typed. The self.update_mirrors() function does
+" the actual work.
+" If the cursor moves outside of a placeholder, call self.remove()
 function! s:state_proto.update_changes()
 	" If tab stop has been modified, delete any nested placeholders it has.
 	if !exists('self.nested_count') &&
@@ -646,6 +647,7 @@ function! s:state_proto.update_changes()
 	let self.prevLen = col('$')
 endfunction
 
+" Delete any nested tab stops
 function! s:state_proto.delete_nested()
 	let self.nested_count = 0
 	let lnum = line('.')
@@ -660,8 +662,7 @@ function! s:state_proto.delete_nested()
 	endfor
 endfunction
 
-" This updates the variables in a snippet when a placeholder has been edited.
-" (e.g., each "$1" in "${1:foo} $1bar $1bar")
+" Actually update the mirrors for any changed text
 function! s:state_proto.update_mirrors(change)
 	let newWordLen = self.endCol - self.startCol
 	let newWord = strpart(getline('.'), self.startCol - 1, newWordLen)
