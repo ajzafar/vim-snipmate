@@ -60,16 +60,11 @@ function! s:CreateSnippets(...)
 	for ft in scopes
 		if has_key(s:did_ft, ft) | continue | endif
 		if !has_key(s:snips, ft) | let s:snips[ft] = {} | endif
-		call s:DefineSnips(ft)
+		for path in split(globpath(g:snippets_dir, ft . '.snippets'), "\n") +
+					\ split(globpath(g:snippets_dir, ft . '/*.snippets'), "\n")
+			call s:ExtractSnipsFile(path, ft)
+		endfor
 		let s:did_ft[ft] = 1
-	endfor
-endfunction
-
-function! s:DefineSnips(scope)
-	let dir = g:snippets_dir
-	for path in split(globpath(dir, a:scope.'.snippets'), "\n") +
-				\ split(globpath(dir, a:scope.'/*.snippets'), "\n")
-		call s:ExtractSnipsFile(path, a:scope)
 	endfor
 endfunction
 
