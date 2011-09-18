@@ -765,7 +765,6 @@ function! s:state_proto.update_mirrors()
 	let self.oldWord = newWord
 	let self.stops[self.cur_stop][2] = newWordLen
 endfunction
-" vim:noet:sw=4:ts=4:ft=vim
 " }}}
 
 " restore 'cpo'
