@@ -507,6 +507,11 @@ endfunction
 
 " Jump to the next/previous tab stop
 function! s:state_proto.jump_stop(backwards)
+    " Update things just in case
+    " AFAIK this is only needed because selecting items with the pop up menu
+    " does not trigger CursorMovedI
+    call self.update_changes()
+
     " Update the locations of tab stops for any changes made
     if self.has_mirrors
         call self.update_placeholders()
