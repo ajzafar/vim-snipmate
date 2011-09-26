@@ -192,7 +192,7 @@ function! s:GetMatches(trigger)
             endfor
         endfor
     endfor
-    call filter(snippets, 'v:val.word =~ "\\V^' . escape(a:trigger, '"\') . '"')
+    call filter(snippets, 'v:val.word =~ "\\V\\^' . escape(a:trigger, '"\') . '"')
     call sort(snippets)
     return snippets
 endfunction
