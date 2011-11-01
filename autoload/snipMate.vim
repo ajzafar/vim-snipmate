@@ -73,6 +73,7 @@ function! s:state_proto.set_stop(stop)
     let self.has_mirrors = !empty(self.cur_stop[3])
     call cursor(self.cur_stop[0], self.cur_stop[1])
     let self.prevLen = col('$')
+    let self.oldVars = deepcopy(self.cur_stop[3])
 endfunction
 
 " Prepare snippet to be processed by s:BuildTabStops
@@ -243,13 +244,10 @@ function! s:state_proto.jump_stop(backwards)
     " does not trigger CursorMovedI
     call self.update_changes()
 
-    " Update the locations of tab stops for any changes made
-    if self.has_mirrors
-        call self.update_placeholders()
-    else
-        call self.update_stops()
-    endif
+    " Update stop and mirror locations
+    call self.update_stops()
 
+    " Store the changed col/length of the current stop
     let self.cur_stop[1] = self.startCol
     let self.cur_stop[2] = self.endCol - self.startCol
 
@@ -271,9 +269,8 @@ function! s:state_proto.jump_stop(backwards)
 endfunction
 
 " Updates tab stops/mirrors
-function! s:state_proto.update_placeholders()
+function! s:state_proto.update_stops()
     let changeLen = self.endCol - self.cur_stop[2] - self.startCol
-    if !exists('self.oldVars') | return | endif
     " Update tab stops in snippet if text has been added via "$#"
     " (e.g., in "${1:foo}bar$1${2}").
     if changeLen != 0
@@ -313,30 +310,6 @@ function! s:state_proto.update_placeholders()
             endfor
         endfor
     endif
-    unl self.oldVars
-endfunction
-
-" Updates tab stops/mirrors
-function! s:state_proto.update_stops()
-    let changeCol = self.endCol - self.cur_stop[2] - self.startCol
-    let lnum = self.cur_stop[0]
-    let col = self.cur_stop[1]
-
-    if changeCol != 0
-        " Update the column of all proceeding tab stops if text has
-        " been inserted/deleted in the current line.
-        for pos in self.stops
-            if pos[1] >= col && pos[0] == lnum
-                let pos[1] += changeCol
-            endif
-            for nPos in pos[3]
-                if nPos[0] > lnum | break | endif
-                if nPos[0] == lnum && nPos[1] >= col
-                    let nPos[1] += changeCol
-                endif
-            endfor
-        endfor
-    endif
 endfunction
 
 " Select the placeholder for the current tab stop
@@ -369,13 +342,6 @@ function! s:state_proto.update_changes()
     endif
 
     if self.has_mirrors
-        if !exists('self.oldVars') && self.stop_no + 1 < self.stop_count
-            " Save the old snippet & word length before it's updated.
-            " self.startCol must be saved too, in case text is added
-            " before the snippet (e.g. in "foo$1${2}bar${1:foo}").
-            let self.oldVars = deepcopy(self.cur_stop[3])
-        endif
-
         call self.update_mirrors(changeLen)
     endif
 
