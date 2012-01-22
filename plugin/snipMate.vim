@@ -183,7 +183,7 @@ endfunction
 function! s:GetMatches(trigger)
     " get possible snippets
     let snippets = []
-    for scope in split(&ft, '\.') + ['_']
+    for scope in s:GetScopes()
         for key in keys(get(s:snips, scope, {}))
             let i = 1
             for description in s:snips[scope][key]
