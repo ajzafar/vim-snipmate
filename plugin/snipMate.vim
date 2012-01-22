@@ -33,18 +33,24 @@ augroup snipmate
     au FileType * if &ma | call s:CreateSnippets(split(&ft, '\.')) | endif
 augroup END
 
-inoremap <silent> <Plug>snipmateTrigger  <C-R>=<SID>TriggerSnippet()<CR>
-inoremap <silent> <Plug>snipmatePrev     <C-R>=<SID>PrevTabStop()<CR>
-inoremap <silent> <Plug>snipmateNext     <C-R>=<SID>NextTabStop()<CR>
-inoremap <silent> <Plug>snipmateShow     <C-R>=<SID>ShowAvailableSnips()<CR>
-smap     <silent> <Plug>snipmateNext     <Esc>a<Plug>snipmateNext
-smap     <silent> <Plug>snipmatePrev     <Esc>a<Plug>snipmatePrev
+inoremap <silent> <Plug>snipmateTrigger       <C-R>=<SID>TriggerSnippet()<CR>
+inoremap <silent> <Plug>snipmateNext          <C-R>=<SID>NextTabStop()<CR>
+inoremap <silent> <Plug>snipmatePrev          <C-R>=<SID>PrevTabStop()<CR>
+inoremap <silent> <Plug>snipmateShow          <C-R>=<SID>ShowAvailableSnips()<CR>
+snoremap <silent> <Plug>snipmateNext          <Esc>a<C-R>=<SID>NextTabStop()<CR>
+snoremap <silent> <Plug>snipmatePrev          <Esc>a<C-R>=<SID>PrevTabStop()<CR>
 
-imap <Tab>      <Plug>snipmateTrigger
-imap <S-Tab>    <Plug>snipmatePrev
-imap <C-R><Tab> <Plug>snipmateShow
-smap <Tab>      <Plug>snipmateNext
-smap <S-Tab>    <Plug>snipmatePrev
+function! s:map_if_not_mapped(lhs, rhs, mode)
+    if !hasmapto(a:rhs, a:mode)
+        silent! exe a:mode . 'map <unique>' a:lhs a:rhs
+    endif
+endfunction
+
+call s:map_if_not_mapped('<Tab>',      '<Plug>snipmateTrigger', 'i')
+call s:map_if_not_mapped('<S-Tab>',    '<Plug>snipmatePrev',    'i')
+call s:map_if_not_mapped('<C-R><Tab>', '<Plug>snipmateShow',    'i')
+call s:map_if_not_mapped('<Tab>',      '<Plug>snipmateNext',    's')
+call s:map_if_not_mapped('<S-Tab>',    '<Plug>snipmatePrev',    's')
 
 command! -complete=filetype -nargs=* -bar
             \ ReloadSnippets call s:ReloadSnippets(<f-args>)
