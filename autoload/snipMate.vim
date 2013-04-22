@@ -369,7 +369,6 @@ function! s:state_proto.update_mirrors(change)
     let newWord = strpart(getline('.'), self.startCol - 1, newWordLen)
     let changeLen = a:change
     let curLine = line('.')
-    let startCol = col('.')
     let oldStartSnip = self.startCol
     let updateTabStops = changeLen != 0
     let i = 0
@@ -400,4 +399,10 @@ function! s:state_proto.update_mirrors(change)
         " subtract another -1 to exclude the col'th element
         call setline(lnum, theline[0:(col-2)] . newWord . theline[(col+self.endCol-self.startCol-a:change-1):])
     endfor
+
+    " Reposition the cursor in case a var updates on the same line but before
+    " the current tabstop
+    if oldStartSnip != self.startCol
+        call cursor(0, col('.') + self.startCol - oldStartSnip)
+    endif
 endfunction
