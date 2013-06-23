@@ -339,9 +339,7 @@ function! s:state_proto.update_changes()
     let col = col('.')
     if line('.') != self.cur_stop[0] || col < self.startCol || col > self.endCol
         call self.remove()
-    endif
-
-    if self.has_mirrors
+    elseif self.has_mirrors
         call self.update_mirrors(changeLen)
     endif
 
