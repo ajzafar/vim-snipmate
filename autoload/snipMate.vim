@@ -35,7 +35,7 @@ function! snipMate#expandSnip(snip, col)
     " Insert snippet with proper indentation
     let indent = indent(lnum) + 1
     call setline(lnum, line.snipLines[0])
-    call append(lnum, map(snipLines[1:], "'".strpart(line, 0, indent - 1)."'.v:val"))
+    call append(lnum, map(snipLines[1:], "empty(v:val) ? v:val : '" . strpart(line, 0, indent - 1) . "' . v:val"))
 
     " Open any folds snippet expands into
     if &fen | sil! exe lnum.','.(lnum + len(snipLines) - 1).'foldopen' | endif
