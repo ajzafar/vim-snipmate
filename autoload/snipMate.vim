@@ -48,8 +48,7 @@ function! snipMate#expandSnip(snip, col)
     if b:snipstate.stop_count
         " Update the snippet when entering insert mode and when the cursor moves
         aug snipmate_changes
-            au CursorMovedI <buffer> call b:snipstate.update_changes()
-            au InsertEnter <buffer> call b:snipstate.update_changes()
+            au CursorMoved,CursorMovedI <buffer> call b:snipstate.update_changes()
         aug END
         call b:snipstate.set_stop(0)
 
@@ -335,12 +334,21 @@ function! s:state_proto.update_changes()
 
     let changeLen = col('$') - self.prevLen
     let self.endCol += changeLen
-
     let col = col('.')
+    let pos = col - self.startCol
+
     if line('.') != self.cur_stop[0] || col < self.startCol || col > self.endCol
-        call self.remove()
-    elseif self.has_mirrors
+        return self.remove()
+    endif
+
+    if self.has_mirrors
         call self.update_mirrors(changeLen)
+
+        " Reposition the cursor in case a var updates on the same line but before
+        " the current tabstop
+        if changeLen != 0 || mode() == 'i'
+            call cursor(0, self.startCol + pos)
+        endif
     endif
 
     let self.prevLen = col('$')
@@ -367,7 +375,6 @@ function! s:state_proto.update_mirrors(change)
     let newWord = strpart(getline('.'), self.startCol - 1, newWordLen)
     let changeLen = a:change
     let curLine = line('.')
-    let oldStartSnip = self.startCol
     let updateTabStops = changeLen != 0
     let i = 0
 
@@ -401,10 +408,4 @@ function! s:state_proto.update_mirrors(change)
         let update .= strpart(theline, col + self.endCol - self.startCol - a:change - 1)
         call setline(lnum, update)
     endfor
-
-    " Reposition the cursor in case a var updates on the same line but before
-    " the current tabstop
-    if oldStartSnip != self.startCol
-        call cursor(0, col('.') + self.startCol - oldStartSnip)
-    endif
 endfunction
