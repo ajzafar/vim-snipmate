@@ -158,21 +158,8 @@ function! s:TriggerSnippet()
         endif
     endfor
 
-    " haven't found one, get some matches
-    let matches = s:GetMatches(trigger)
-    " no matches? insert a tab
-    if empty(matches) || trigger == ''
-        return "\<tab>"
-    endif
-    call complete(begin, matches)
-
-    " only one possible match, trigger it
-    if len(matches) == 1
-        return s:TriggerSnippet()
-    else
-    " return nothing otherwise we break the completion
-        return ''
-    endif
+    " Return a tab when nothing was found
+    return "\<Tab>"
 endfunction
 
 function! s:GrabTrigger()
